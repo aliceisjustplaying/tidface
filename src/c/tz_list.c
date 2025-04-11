@@ -23,14 +23,9 @@ static const TzCityName tz_names_0[] = {
     { "Midway" },
     { "Niue" },
     { "Pago Pago" },
-    { "Samoa" },
 };
 
 static const TzCityName tz_names_1[] = {
-    { "Adak" },
-    { "Aleutian" },
-    { "Atka" },
-    { "Hawaii" },
     { "Honolulu" },
     { "Johnston" },
     { "Rarotonga" },
@@ -38,13 +33,20 @@ static const TzCityName tz_names_1[] = {
 };
 
 static const TzCityName tz_names_2[] = {
-    { "Marquesas" },
+    { "Adak" },
+    { "Atka" },
 };
 
 static const TzCityName tz_names_3[] = {
-    { "Alaska" },
-    { "Anchorage" },
+    { "Marquesas" },
+};
+
+static const TzCityName tz_names_4[] = {
     { "Gambier" },
+};
+
+static const TzCityName tz_names_5[] = {
+    { "Anchorage" },
     { "Juneau" },
     { "Metlakatla" },
     { "Nome" },
@@ -52,110 +54,110 @@ static const TzCityName tz_names_3[] = {
     { "Yakutat" },
 };
 
-static const TzCityName tz_names_4[] = {
+static const TzCityName tz_names_6[] = {
+    { "Pitcairn" },
+};
+
+static const TzCityName tz_names_7[] = {
     { "BajaNorte" },
     { "Ensenada" },
     { "Los Angeles" },
-    { "Pacific" },
-    { "Pitcairn" },
     { "Santa Isabel" },
     { "Tijuana" },
     { "Vancouver" },
 };
 
-static const TzCityName tz_names_5[] = {
-    { "Arizona" },
+static const TzCityName tz_names_8[] = {
     { "BajaSur" },
-    { "Boise" },
-    { "Cambridge Bay" },
-    { "Ciudad Juarez" },
     { "Creston" },
     { "Dawson" },
     { "Dawson Creek" },
-    { "Denver" },
-    { "Edmonton" },
     { "Fort Nelson" },
     { "Hermosillo" },
-    { "Inuvik" },
     { "Mazatlan" },
-    { "Mountain" },
     { "Phoenix" },
-    { "Shiprock" },
     { "Whitehorse" },
-    { "Yellowknife" },
-    { "Yukon" },
 };
 
-static const TzCityName tz_names_6[] = {
+static const TzCityName tz_names_9[] = {
+    { "Boise" },
+    { "Cambridge Bay" },
+    { "Ciudad Juarez" },
+    { "Denver" },
+    { "Edmonton" },
+    { "Inuvik" },
+    { "Shiprock" },
+    { "Yellowknife" },
+};
+
+static const TzCityName tz_names_10[] = {
     { "Bahia Banderas" },
     { "Belize" },
-    { "Beulah" },
-    { "Center" },
-    { "Central" },
-    { "Chicago" },
     { "Chihuahua" },
     { "Costa Rica" },
-    { "Easter" },
-    { "EasterIsland" },
     { "El Salvador" },
     { "Galapagos" },
-    { "General" },
     { "Guatemala" },
-    { "Indiana-Starke" },
-    { "Knox" },
-    { "Knox IN" },
     { "Managua" },
-    { "Matamoros" },
-    { "Menominee" },
     { "Merida" },
     { "Mexico City" },
     { "Monterrey" },
+    { "Regina" },
+    { "Swift Current" },
+    { "Tegucigalpa" },
+};
+
+static const TzCityName tz_names_11[] = {
+    { "Beulah" },
+    { "Center" },
+    { "Chicago" },
+    { "Indiana-Starke" },
+    { "Knox" },
+    { "Matamoros" },
+    { "Menominee" },
     { "New Salem" },
     { "Ojinaga" },
     { "Rainy River" },
     { "Rankin Inlet" },
-    { "Regina" },
     { "Resolute" },
-    { "Saskatchewan" },
-    { "Swift Current" },
-    { "Tegucigalpa" },
     { "Tell City" },
     { "Winnipeg" },
 };
 
-static const TzCityName tz_names_7[] = {
-    { "Acre" },
+static const TzCityName tz_names_12[] = {
+    { "Easter" },
+};
+
+static const TzCityName tz_names_13[] = {
     { "Atikokan" },
     { "Bogota" },
     { "Cancun" },
     { "Cayman" },
     { "Coral Harbour" },
-    { "Detroit" },
-    { "East-Indiana" },
-    { "Eastern" },
     { "Eirunepe" },
+    { "Guayaquil" },
+    { "Lima" },
+    { "Panama" },
+    { "Porto Acre" },
+    { "Rio Branco" },
+};
+
+static const TzCityName tz_names_14[] = {
+    { "Detroit" },
     { "Fort Wayne" },
     { "Grand Turk" },
-    { "Guayaquil" },
-    { "Havana" },
     { "Indianapolis" },
     { "Iqaluit" },
-    { "Jamaica" },
-    { "Lima" },
     { "Louisville" },
     { "Marengo" },
-    { "Michigan" },
     { "Monticello" },
     { "Montreal" },
     { "Nassau" },
     { "New York" },
     { "Nipigon" },
-    { "Panama" },
     { "Pangnirtung" },
     { "Petersburg" },
     { "Port-au-Prince" },
-    { "Porto Acre" },
-    { "Rio Branco" },
     { "Thunder Bay" },
     { "Toronto" },
     { "Vevay" },
@@ -163,73 +165,76 @@ static const TzCityName tz_names_7[] = {
     { "Winamac" },
 };
 
-static const TzCityName tz_names_8[] = {
+static const TzCityName tz_names_15[] = {
+    { "Havana" },
+};
+
+static const TzCityName tz_names_16[] = {
     { "Anguilla" },
     { "Antigua" },
     { "Aruba" },
-    { "Atlantic" },
     { "Barbados" },
-    { "Bermuda" },
     { "Blanc-Sablon" },
     { "Boa Vista" },
     { "Campo Grande" },
     { "Caracas" },
-    { "Continental" },
     { "Cuiaba" },
     { "Curacao" },
     { "Dominica" },
-    { "Glace Bay" },
-    { "Goose Bay" },
     { "Grenada" },
     { "Guadeloupe" },
     { "Guyana" },
-    { "Halifax" },
     { "Kralendijk" },
     { "La Paz" },
     { "Lower Princes" },
     { "Manaus" },
     { "Marigot" },
     { "Martinique" },
-    { "Moncton" },
     { "Montserrat" },
     { "Port of Spain" },
     { "Porto Velho" },
     { "Puerto Rico" },
-    { "Santiago" },
     { "Santo Domingo" },
     { "St Barthelemy" },
     { "St Kitts" },
     { "St Lucia" },
     { "St Thomas" },
     { "St Vincent" },
-    { "Thule" },
     { "Tortola" },
     { "Virgin" },
-    { "West" },
 };
 
-static const TzCityName tz_names_9[] = {
-    { "Newfoundland" },
+static const TzCityName tz_names_17[] = {
+    { "Bermuda" },
+    { "Glace Bay" },
+    { "Goose Bay" },
+    { "Halifax" },
+    { "Moncton" },
+    { "Thule" },
+};
+
+static const TzCityName tz_names_18[] = {
+    { "Santiago" },
+};
+
+static const TzCityName tz_names_19[] = {
     { "St Johns" },
 };
 
-static const TzCityName tz_names_10[] = {
+static const TzCityName tz_names_20[] = {
     { "Araguaina" },
     { "Asuncion" },
-    { "Bahia" },
     { "Belem" },
     { "Buenos Aires" },
     { "Catamarca" },
     { "Cayenne" },
     { "ComodRivadavia" },
     { "Cordoba" },
-    { "East" },
     { "Fortaleza" },
     { "Jujuy" },
     { "La Rioja" },
     { "Maceio" },
     { "Mendoza" },
-    { "Miquelon" },
     { "Montevideo" },
     { "Palmer" },
     { "Paramaribo" },
@@ -248,44 +253,39 @@ static const TzCityName tz_names_10[] = {
     { "Ushuaia" },
 };
 
-static const TzCityName tz_names_11[] = {
-    { "DeNoronha" },
-    { "Godthab" },
-    { "Noronha" },
-    { "Nuuk" },
-    { "Scoresbysund" },
-    { "South Georgia" },
+static const TzCityName tz_names_21[] = {
+    { "Miquelon" },
 };
 
-static const TzCityName tz_names_12[] = {
-    { "Azores" },
+static const TzCityName tz_names_22[] = {
+    { "DeNoronha" },
+};
+
+static const TzCityName tz_names_23[] = {
+    { "Godthab" },
+    { "Nuuk" },
+    { "Scoresbysund" },
+};
+
+static const TzCityName tz_names_24[] = {
     { "Cape Verde" },
 };
 
-static const TzCityName tz_names_13[] = {
+static const TzCityName tz_names_25[] = {
+    { "Azores" },
+};
+
+static const TzCityName tz_names_26[] = {
     { "Abidjan" },
     { "Accra" },
     { "Bamako" },
     { "Banjul" },
-    { "Belfast" },
     { "Bissau" },
-    { "Canary" },
-    { "Casablanca" },
     { "Conakry" },
     { "Dakar" },
     { "Danmarkshavn" },
-    { "Dublin" },
-    { "El Aaiun" },
-    { "Faeroe" },
-    { "Faroe" },
     { "Freetown" },
-    { "Guernsey" },
-    { "Isle of Man" },
-    { "Jersey" },
-    { "Lisbon" },
     { "Lome" },
-    { "London" },
-    { "Madeira" },
     { "Monrovia" },
     { "Nouakchott" },
     { "Ouagadougou" },
@@ -293,43 +293,61 @@ static const TzCityName tz_names_13[] = {
     { "Sao Tome" },
     { "St Helena" },
     { "Timbuktu" },
+};
+
+static const TzCityName tz_names_27[] = {
+    { "Belfast" },
+    { "Dublin" },
+    { "Lisbon" },
+    { "London" },
+};
+
+static const TzCityName tz_names_28[] = {
+    { "Casablanca" },
+    { "El Aaiun" },
+};
+
+static const TzCityName tz_names_29[] = {
     { "Troll" },
 };
 
-static const TzCityName tz_names_14[] = {
+static const TzCityName tz_names_30[] = {
     { "Algiers" },
+    { "Bangui" },
+    { "Brazzaville" },
+    { "Douala" },
+    { "Kinshasa" },
+    { "Lagos" },
+    { "Libreville" },
+    { "Luanda" },
+    { "Malabo" },
+    { "Ndjamena" },
+    { "Niamey" },
+    { "Porto-Novo" },
+    { "Tunis" },
+};
+
+static const TzCityName tz_names_31[] = {
     { "Amsterdam" },
     { "Andorra" },
-    { "Bangui" },
     { "Belgrade" },
     { "Berlin" },
     { "Bratislava" },
-    { "Brazzaville" },
     { "Brussels" },
     { "Budapest" },
     { "Busingen" },
     { "Ceuta" },
     { "Copenhagen" },
-    { "Douala" },
     { "Gibraltar" },
-    { "Jan Mayen" },
-    { "Kinshasa" },
-    { "Lagos" },
-    { "Libreville" },
     { "Ljubljana" },
     { "Longyearbyen" },
-    { "Luanda" },
     { "Luxembourg" },
     { "Madrid" },
-    { "Malabo" },
     { "Malta" },
     { "Monaco" },
-    { "Ndjamena" },
-    { "Niamey" },
     { "Oslo" },
     { "Paris" },
     { "Podgorica" },
-    { "Porto-Novo" },
     { "Prague" },
     { "Rome" },
     { "San Marino" },
@@ -337,7 +355,6 @@ static const TzCityName tz_names_14[] = {
     { "Skopje" },
     { "Stockholm" },
     { "Tirane" },
-    { "Tunis" },
     { "Vaduz" },
     { "Vatican" },
     { "Vienna" },
@@ -346,48 +363,66 @@ static const TzCityName tz_names_14[] = {
     { "Zurich" },
 };
 
-static const TzCityName tz_names_15[] = {
-    { "Athens" },
-    { "Beirut" },
+static const TzCityName tz_names_32[] = {
     { "Blantyre" },
-    { "Bucharest" },
     { "Bujumbura" },
-    { "Cairo" },
-    { "Chisinau" },
-    { "Famagusta" },
     { "Gaborone" },
-    { "Gaza" },
     { "Harare" },
-    { "Hebron" },
-    { "Helsinki" },
-    { "Jerusalem" },
     { "Johannesburg" },
     { "Juba" },
     { "Kaliningrad" },
     { "Khartoum" },
-    { "Kiev" },
     { "Kigali" },
-    { "Kyiv" },
     { "Lubumbashi" },
     { "Lusaka" },
     { "Maputo" },
-    { "Mariehamn" },
     { "Maseru" },
     { "Mbabane" },
+    { "Tripoli" },
+    { "Windhoek" },
+};
+
+static const TzCityName tz_names_33[] = {
+    { "Jerusalem" },
+    { "Tel Aviv" },
+};
+
+static const TzCityName tz_names_34[] = {
+    { "Athens" },
+    { "Bucharest" },
+    { "Famagusta" },
+    { "Helsinki" },
+    { "Kiev" },
+    { "Kyiv" },
+    { "Mariehamn" },
     { "Nicosia" },
     { "Riga" },
     { "Sofia" },
     { "Tallinn" },
-    { "Tel Aviv" },
-    { "Tiraspol" },
-    { "Tripoli" },
     { "Uzhgorod" },
     { "Vilnius" },
-    { "Windhoek" },
     { "Zaporozhye" },
 };
 
-static const TzCityName tz_names_16[] = {
+static const TzCityName tz_names_35[] = {
+    { "Gaza" },
+    { "Hebron" },
+};
+
+static const TzCityName tz_names_36[] = {
+    { "Cairo" },
+};
+
+static const TzCityName tz_names_37[] = {
+    { "Chisinau" },
+    { "Tiraspol" },
+};
+
+static const TzCityName tz_names_38[] = {
+    { "Beirut" },
+};
+
+static const TzCityName tz_names_39[] = {
     { "Addis Ababa" },
     { "Aden" },
     { "Amman" },
@@ -416,11 +451,11 @@ static const TzCityName tz_names_16[] = {
     { "Volgograd" },
 };
 
-static const TzCityName tz_names_17[] = {
+static const TzCityName tz_names_40[] = {
     { "Tehran" },
 };
 
-static const TzCityName tz_names_18[] = {
+static const TzCityName tz_names_41[] = {
     { "Astrakhan" },
     { "Baku" },
     { "Dubai" },
@@ -435,11 +470,11 @@ static const TzCityName tz_names_18[] = {
     { "Yerevan" },
 };
 
-static const TzCityName tz_names_19[] = {
+static const TzCityName tz_names_42[] = {
     { "Kabul" },
 };
 
-static const TzCityName tz_names_20[] = {
+static const TzCityName tz_names_43[] = {
     { "Almaty" },
     { "Aqtau" },
     { "Aqtobe" },
@@ -460,18 +495,18 @@ static const TzCityName tz_names_20[] = {
     { "Yekaterinburg" },
 };
 
-static const TzCityName tz_names_21[] = {
+static const TzCityName tz_names_44[] = {
     { "Calcutta" },
     { "Colombo" },
     { "Kolkata" },
 };
 
-static const TzCityName tz_names_22[] = {
+static const TzCityName tz_names_45[] = {
     { "Kathmandu" },
     { "Katmandu" },
 };
 
-static const TzCityName tz_names_23[] = {
+static const TzCityName tz_names_46[] = {
     { "Bishkek" },
     { "Chagos" },
     { "Dacca" },
@@ -483,13 +518,13 @@ static const TzCityName tz_names_23[] = {
     { "Urumqi" },
 };
 
-static const TzCityName tz_names_24[] = {
+static const TzCityName tz_names_47[] = {
     { "Cocos" },
     { "Rangoon" },
     { "Yangon" },
 };
 
-static const TzCityName tz_names_25[] = {
+static const TzCityName tz_names_48[] = {
     { "Bangkok" },
     { "Barnaul" },
     { "Christmas" },
@@ -507,7 +542,7 @@ static const TzCityName tz_names_25[] = {
     { "Vientiane" },
 };
 
-static const TzCityName tz_names_26[] = {
+static const TzCityName tz_names_49[] = {
     { "Brunei" },
     { "Casey" },
     { "Choibalsan" },
@@ -529,14 +564,13 @@ static const TzCityName tz_names_26[] = {
     { "Ujung Pandang" },
     { "Ulaanbaatar" },
     { "Ulan Bator" },
-    { "West" },
 };
 
-static const TzCityName tz_names_27[] = {
+static const TzCityName tz_names_50[] = {
     { "Eucla" },
 };
 
-static const TzCityName tz_names_28[] = {
+static const TzCityName tz_names_51[] = {
     { "Chita" },
     { "Dili" },
     { "Jayapura" },
@@ -548,52 +582,49 @@ static const TzCityName tz_names_28[] = {
     { "Yakutsk" },
 };
 
-static const TzCityName tz_names_29[] = {
+static const TzCityName tz_names_52[] = {
+    { "Darwin" },
+};
+
+static const TzCityName tz_names_53[] = {
     { "Adelaide" },
     { "Broken Hill" },
-    { "Darwin" },
-    { "North" },
-    { "South" },
     { "Yancowinna" },
 };
 
-static const TzCityName tz_names_30[] = {
-    { "ACT" },
+static const TzCityName tz_names_54[] = {
     { "Brisbane" },
-    { "Canberra" },
     { "Chuuk" },
-    { "Currie" },
     { "DumontDUrville" },
     { "Guam" },
-    { "Hobart" },
     { "Lindeman" },
-    { "Macquarie" },
-    { "Melbourne" },
-    { "NSW" },
     { "Port Moresby" },
-    { "Queensland" },
     { "Saipan" },
-    { "Sydney" },
-    { "Tasmania" },
     { "Truk" },
     { "Ust-Nera" },
-    { "Victoria" },
     { "Vladivostok" },
-    { "Yap" },
 };
 
-static const TzCityName tz_names_31[] = {
+static const TzCityName tz_names_55[] = {
+    { "Canberra" },
+    { "Currie" },
+    { "Hobart" },
+    { "Macquarie" },
+    { "Melbourne" },
+    { "Sydney" },
+};
+
+static const TzCityName tz_names_56[] = {
     { "LHI" },
     { "Lord Howe" },
 };
 
-static const TzCityName tz_names_32[] = {
+static const TzCityName tz_names_57[] = {
     { "Bougainville" },
     { "Efate" },
     { "Guadalcanal" },
     { "Kosrae" },
     { "Magadan" },
-    { "Norfolk" },
     { "Noumea" },
     { "Pohnpei" },
     { "Ponape" },
@@ -601,77 +632,109 @@ static const TzCityName tz_names_32[] = {
     { "Srednekolymsk" },
 };
 
-static const TzCityName tz_names_33[] = {
+static const TzCityName tz_names_58[] = {
+    { "Norfolk" },
+};
+
+static const TzCityName tz_names_59[] = {
     { "Anadyr" },
-    { "Auckland" },
     { "Fiji" },
     { "Funafuti" },
     { "Kamchatka" },
     { "Kwajalein" },
     { "Majuro" },
-    { "McMurdo" },
     { "Nauru" },
-    { "South Pole" },
     { "Tarawa" },
     { "Wake" },
     { "Wallis" },
 };
 
-static const TzCityName tz_names_34[] = {
+static const TzCityName tz_names_60[] = {
+    { "Auckland" },
+    { "McMurdo" },
+};
+
+static const TzCityName tz_names_61[] = {
     { "Chatham" },
 };
 
-static const TzCityName tz_names_35[] = {
+static const TzCityName tz_names_62[] = {
     { "Apia" },
     { "Enderbury" },
     { "Fakaofo" },
-    { "Kanton" },
     { "Tongatapu" },
 };
 
-static const TzCityName tz_names_36[] = {
+static const TzCityName tz_names_63[] = {
     { "Kiritimati" },
 };
 
 // Main list mapping offsets/DST info to their respective name arrays
 static const TzInfo tz_list[] = {
-    { -11.00f, -11.00f, 0LL, 0LL, tz_names_0, 4 },
-    { -10.00f, -10.00f, 0LL, 0LL, tz_names_1, 8 },
-    { -9.50f, -9.50f, 0LL, 0LL, tz_names_2, 1 },
-    { -9.00f, -8.00f, 1741489200LL, 1762048800LL, tz_names_3, 8 },
-    { -8.00f, -7.00f, 1741489200LL, 1762048800LL, tz_names_4, 8 },
-    { -7.00f, -6.00f, 1741489200LL, 1762048800LL, tz_names_5, 20 },
-    { -6.00f, -6.00f, 0LL, 0LL, tz_names_6, 34 },
-    { -5.00f, -4.00f, 1741489200LL, 1762048800LL, tz_names_7, 37 },
-    { -4.00f, -3.00f, 1741489200LL, 1762048800LL, tz_names_8, 42 },
-    { -3.50f, -2.50f, 1741489200LL, 1762048800LL, tz_names_9, 2 },
-    { -3.00f, -3.00f, 0LL, 0LL, tz_names_10, 32 },
-    { -2.00f, -1.00f, 1743292800LL, 1761436800LL, tz_names_11, 6 },
-    { -1.00f, 0.00f, 1743296400LL, 1761440400LL, tz_names_12, 2 },
-    { 0.00f, 1.00f, 1743300000LL, 1761444000LL, tz_names_13, 31 },
-    { 1.00f, 2.00f, 1743303600LL, 1761447600LL, tz_names_14, 47 },
-    { 2.00f, 3.00f, 1745542800LL, 1761868800LL, tz_names_15, 38 },
-    { 3.00f, 3.00f, 0LL, 0LL, tz_names_16, 26 },
-    { 3.50f, 3.50f, 0LL, 0LL, tz_names_17, 1 },
-    { 4.00f, 4.00f, 0LL, 0LL, tz_names_18, 12 },
-    { 4.50f, 4.50f, 0LL, 0LL, tz_names_19, 1 },
-    { 5.00f, 5.00f, 0LL, 0LL, tz_names_20, 18 },
-    { 5.50f, 5.50f, 0LL, 0LL, tz_names_21, 3 },
-    { 5.75f, 5.75f, 0LL, 0LL, tz_names_22, 2 },
-    { 6.00f, 6.00f, 0LL, 0LL, tz_names_23, 9 },
-    { 6.50f, 6.50f, 0LL, 0LL, tz_names_24, 3 },
-    { 7.00f, 7.00f, 0LL, 0LL, tz_names_25, 15 },
-    { 8.00f, 8.00f, 0LL, 0LL, tz_names_26, 22 },
-    { 8.75f, 8.75f, 0LL, 0LL, tz_names_27, 1 },
-    { 9.00f, 9.00f, 0LL, 0LL, tz_names_28, 9 },
-    { 9.50f, 10.50f, 1759633200LL, 1743908400LL, tz_names_29, 6 },
-    { 10.00f, 10.00f, 0LL, 0LL, tz_names_30, 22 },
-    { 10.50f, 11.00f, 1759633200LL, 1743904800LL, tz_names_31, 2 },
-    { 11.00f, 11.00f, 0LL, 0LL, tz_names_32, 11 },
-    { 12.00f, 12.00f, 0LL, 0LL, tz_names_33, 13 },
-    { 12.75f, 13.75f, 1759032000LL, 1743912000LL, tz_names_34, 1 },
-    { 13.00f, 13.00f, 0LL, 0LL, tz_names_35, 5 },
-    { 14.00f, 14.00f, 0LL, 0LL, tz_names_36, 1 },
+    { -11.00f, -11.00f, 0LL, 0LL, tz_names_0, 3 },
+    { -10.00f, -10.00f, 0LL, 0LL, tz_names_1, 4 },
+    { -10.00f, -9.00f, 1741489200LL, 1762048800LL, tz_names_2, 2 },
+    { -9.50f, -9.50f, 0LL, 0LL, tz_names_3, 1 },
+    { -9.00f, -9.00f, 0LL, 0LL, tz_names_4, 1 },
+    { -9.00f, -8.00f, 1741489200LL, 1762048800LL, tz_names_5, 6 },
+    { -8.00f, -8.00f, 0LL, 0LL, tz_names_6, 1 },
+    { -8.00f, -7.00f, 1741489200LL, 1762048800LL, tz_names_7, 6 },
+    { -7.00f, -7.00f, 0LL, 0LL, tz_names_8, 9 },
+    { -7.00f, -6.00f, 1741489200LL, 1762048800LL, tz_names_9, 8 },
+    { -6.00f, -6.00f, 0LL, 0LL, tz_names_10, 14 },
+    { -6.00f, -5.00f, 1741489200LL, 1762048800LL, tz_names_11, 14 },
+    { -6.00f, -5.00f, 1757199600LL, 1743890400LL, tz_names_12, 1 },
+    { -5.00f, -5.00f, 0LL, 0LL, tz_names_13, 11 },
+    { -5.00f, -4.00f, 1741489200LL, 1762048800LL, tz_names_14, 20 },
+    { -5.00f, -4.00f, 1741482000LL, 1762045200LL, tz_names_15, 1 },
+    { -4.00f, -4.00f, 0LL, 0LL, tz_names_16, 32 },
+    { -4.00f, -3.00f, 1741489200LL, 1762048800LL, tz_names_17, 6 },
+    { -4.00f, -3.00f, 1757206800LL, 1743897600LL, tz_names_18, 1 },
+    { -3.50f, -2.50f, 1741489200LL, 1762048800LL, tz_names_19, 1 },
+    { -3.00f, -3.00f, 0LL, 0LL, tz_names_20, 29 },
+    { -3.00f, -2.00f, 1741489200LL, 1762048800LL, tz_names_21, 1 },
+    { -2.00f, -2.00f, 0LL, 0LL, tz_names_22, 1 },
+    { -2.00f, -1.00f, 1743292800LL, 1761436800LL, tz_names_23, 3 },
+    { -1.00f, -1.00f, 0LL, 0LL, tz_names_24, 1 },
+    { -1.00f, 0.00f, 1743296400LL, 1761440400LL, tz_names_25, 1 },
+    { 0.00f, 0.00f, 0LL, 0LL, tz_names_26, 17 },
+    { 0.00f, 1.00f, 1743300000LL, 1761444000LL, tz_names_27, 4 },
+    { 0.00f, 1.00f, 1743908400LL, 1740279600LL, tz_names_28, 2 },
+    { 0.00f, 2.00f, 1743303600LL, 1761447600LL, tz_names_29, 1 },
+    { 1.00f, 1.00f, 0LL, 0LL, tz_names_30, 13 },
+    { 1.00f, 2.00f, 1743303600LL, 1761447600LL, tz_names_31, 33 },
+    { 2.00f, 2.00f, 0LL, 0LL, tz_names_32, 16 },
+    { 2.00f, 3.00f, 1743130800LL, 1761444000LL, tz_names_33, 2 },
+    { 2.00f, 3.00f, 1743307200LL, 1761451200LL, tz_names_34, 14 },
+    { 2.00f, 3.00f, 1744426800LL, 1761357600LL, tz_names_35, 2 },
+    { 2.00f, 3.00f, 1745542800LL, 1761868800LL, tz_names_36, 1 },
+    { 2.00f, 3.00f, 1743303600LL, 1761447600LL, tz_names_37, 2 },
+    { 2.00f, 3.00f, 1743296400LL, 1761436800LL, tz_names_38, 1 },
+    { 3.00f, 3.00f, 0LL, 0LL, tz_names_39, 26 },
+    { 3.50f, 3.50f, 0LL, 0LL, tz_names_40, 1 },
+    { 4.00f, 4.00f, 0LL, 0LL, tz_names_41, 12 },
+    { 4.50f, 4.50f, 0LL, 0LL, tz_names_42, 1 },
+    { 5.00f, 5.00f, 0LL, 0LL, tz_names_43, 18 },
+    { 5.50f, 5.50f, 0LL, 0LL, tz_names_44, 3 },
+    { 5.75f, 5.75f, 0LL, 0LL, tz_names_45, 2 },
+    { 6.00f, 6.00f, 0LL, 0LL, tz_names_46, 9 },
+    { 6.50f, 6.50f, 0LL, 0LL, tz_names_47, 3 },
+    { 7.00f, 7.00f, 0LL, 0LL, tz_names_48, 15 },
+    { 8.00f, 8.00f, 0LL, 0LL, tz_names_49, 21 },
+    { 8.75f, 8.75f, 0LL, 0LL, tz_names_50, 1 },
+    { 9.00f, 9.00f, 0LL, 0LL, tz_names_51, 9 },
+    { 9.50f, 9.50f, 0LL, 0LL, tz_names_52, 1 },
+    { 9.50f, 10.50f, 1759633200LL, 1743908400LL, tz_names_53, 3 },
+    { 10.00f, 10.00f, 0LL, 0LL, tz_names_54, 10 },
+    { 10.00f, 11.00f, 1759633200LL, 1743908400LL, tz_names_55, 6 },
+    { 10.50f, 11.00f, 1759633200LL, 1743904800LL, tz_names_56, 2 },
+    { 11.00f, 11.00f, 0LL, 0LL, tz_names_57, 10 },
+    { 11.00f, 12.00f, 1759633200LL, 1743908400LL, tz_names_58, 1 },
+    { 12.00f, 12.00f, 0LL, 0LL, tz_names_59, 10 },
+    { 12.00f, 13.00f, 1759028400LL, 1743908400LL, tz_names_60, 2 },
+    { 12.75f, 13.75f, 1759032000LL, 1743912000LL, tz_names_61, 1 },
+    { 13.00f, 13.00f, 0LL, 0LL, tz_names_62, 4 },
+    { 14.00f, 14.00f, 0LL, 0LL, tz_names_63, 1 },
 };
 
-#define TZ_LIST_COUNT 37
+#define TZ_LIST_COUNT 64

@@ -1,6 +1,6 @@
 #include <pebble.h>
 #include <stdlib.h>
-#include <time.h> // Required for time_t, rand(), srand()
+#include <time.h>
 
 // --- Clock Module Includes ---
 #include "clock_beat.h"

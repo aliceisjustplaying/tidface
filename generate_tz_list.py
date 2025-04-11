@@ -126,7 +126,7 @@ def generate_tz_list_c_code():
     available_zones = zoneinfo.available_timezones()
     print(f"Found {len(available_zones)} available timezones.")
 
-    processed_zones = {} # Key: std_offset_hours, Value: Dict of zone data
+    processed_zones = {} # Key: TUPLE(std_offset_s, dst_offset_s, start_utc, end_utc), Value: Dict of zone data
 
     for tz_name in available_zones:
         # Basic filtering (no dead code here)
@@ -136,28 +136,45 @@ def generate_tz_list_c_code():
         std_offset_s, dst_offset_s, start_utc, end_utc = find_dst_transitions_accurate(tz_name, target_year)
         city_name = tz_name.split('/')[-1].replace('_', ' ')
 
-        # Convert offsets back to hours
+        # --- Filter out generic names ---
+        # Comprehensive list based on review of tz_list.c
+        generic_names_to_exclude = {
+            "Samoa", "Hawaii", "Aleutian", "Alaska", "Pacific", "Arizona", "Yukon",
+            "Mountain", "General", "Saskatchewan", "Central", "Knox IN", "EasterIsland",
+            "Acre", "Jamaica", "Michigan", "Eastern", "East-Indiana", "Atlantic",
+            "Continental", "Newfoundland", "East", "Bahia", "Noronha", "South Georgia",
+            "Canary", "Faeroe", "Faroe", "Guernsey", "Isle of Man", "Jersey",
+            "Madeira", "Jan Mayen", "West", "North", "South", "ACT", "NSW",
+            "Tasmania", "Victoria", "Queensland", "Yap", "South Pole", "Kanton",
+            # Add or remove names as needed
+        }
+        # Case-insensitive check for exclusion
+        if city_name.lower() in {name.lower() for name in generic_names_to_exclude}:
+            continue # Skip this generic name
+
+        # Convert offsets back to hours for potential display, but keep seconds for key
         std_offset_h = std_offset_s / 3600.0
         dst_offset_h = dst_offset_s / 3600.0
 
-        # Group by standard offset
-        key_offset = std_offset_h
+        # Group by the unique combination of std offset, dst offset, and transitions
+        key_tuple = (std_offset_s, dst_offset_s, start_utc, end_utc)
         if city_name and city_name[0].isupper():
-            if key_offset not in processed_zones:
-                 processed_zones[key_offset] = {
-                    "std_offset": std_offset_h,
-                    "dst_offset": dst_offset_h,
+            if key_tuple not in processed_zones:
+                 processed_zones[key_tuple] = {
+                    "std_offset_s": std_offset_s, # Store seconds internally
+                    "dst_offset_s": dst_offset_s,
                     "start_utc": start_utc,
                     "end_utc": end_utc,
                     "names": []
                  }
             # Add city name if not already present
-            if city_name not in processed_zones[key_offset]["names"]:
-                processed_zones[key_offset]["names"].append(city_name)
+            if city_name not in processed_zones[key_tuple]["names"]:
+                processed_zones[key_tuple]["names"].append(city_name)
 
-    # Convert dict values to a list and sort by standard offset
-    tz_data_list = sorted(processed_zones.values(), key=lambda x: x["std_offset"])
-    print(f"Generated data for {len(tz_data_list)} unique standard offsets.")
+    # Convert dict values to a list and sort primarily by standard offset, then DST offset
+    # Sort key uses the seconds offset stored in the dictionary value
+    tz_data_list = sorted(processed_zones.values(), key=lambda x: (x["std_offset_s"], x["dst_offset_s"]))
+    print(f"Generated data for {len(tz_data_list)} unique offset/DST rule combinations.")
 
     # --- C Code Generation ---
     # Build C code string (no obvious dead code here)
@@ -199,10 +216,13 @@ def generate_tz_list_c_code():
     c_code += "// Main list mapping offsets/DST info to their respective name arrays\n"
     c_code += "static const TzInfo tz_list[] = {\n"
     for zone_data in tz_data_list:
+        # Convert offsets to hours ONLY for C code generation
+        std_offset_h_c = zone_data['std_offset_s'] / 3600.0
+        dst_offset_h_c = zone_data['dst_offset_s'] / 3600.0
         c_array_name = zone_data["c_array_name"]
         name_count = len(zone_data["names"])
         # Use 'LL' suffix for int64_t timestamp constants in C
-        c_code += (f"    {{ {zone_data['std_offset']:.2f}f, {zone_data['dst_offset']:.2f}f, "
+        c_code += (f"    {{ {std_offset_h_c:.2f}f, {dst_offset_h_c:.2f}f, "
                    f"{zone_data['start_utc']}LL, {zone_data['end_utc']}LL, "
                    f"{c_array_name}, {name_count} }},\n")
 
