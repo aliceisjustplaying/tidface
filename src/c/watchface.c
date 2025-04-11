@@ -12,6 +12,7 @@
 static Window *s_main_window;
 static TextLayer *s_beat_layer; // Layer for Swatch Beat Time
 static TextLayer *s_tid_layer;  // Layer for TID Time (renamed from s_time_layer)
+static TextLayer *s_noonzone_layer; // Layer for Noon Zone Time
 
 static const char S32_CHAR[] = "234567abcdefghijklmnopqrstuvwxyz";
 #define S32_CHAR_LEN (sizeof(S32_CHAR) - 1) // 32
@@ -117,7 +118,6 @@ static int beat(time_t current_seconds_utc) {
 
   // Clamp result just in case of edge cases (0 - 9999)
   if (b > 9999) b = 9999;
-  if (b < 0) b = 0;
   return b;
 }
 
@@ -144,6 +144,89 @@ static void update_beat_time(time_t current_seconds_utc) {
 
   // Cache the newly displayed value
   last_beat_time = b;
+}
+
+// --- Noon Zone Time Code ---
+static char s_noonzone_buffer[16]; // Buffer for "NAME:MM:SS\0"
+static int last_noonzone_update_secs = -1; // Cache full secs for update check
+static int last_utc_hour = -1;             // Cache hour for zone name lookup
+static const char *last_zone_name_ptr = NULL; // Cache pointer to zone name string
+
+/**
+ * Gets the military timezone name for the longitude where it is currently noon,
+ * based on the provided UTC hour.
+ * Uses caching to avoid repeated lookups for the same hour.
+ */
+static const char* get_noon_zone_name(int utc_hour) {
+    // Check cache first
+    if (utc_hour == last_utc_hour && last_zone_name_ptr != NULL) {
+        return last_zone_name_ptr;
+    }
+
+    const char *name = "???"; // Default for unexpected hours
+    switch(utc_hour){
+        // Cases map UTC hour to the zone where it's noon
+        case 12: name="ZULU"; break;
+        case 11: name="ALPHA"; break;
+        case 10: name="BRAVO"; break;
+        case 9:  name="CHARLIE"; break;
+        case 8:  name="DELTA"; break;
+        case 7:  name="ECHO"; break;
+        case 6:  name="FOXTROT"; break;
+        case 5:  name="GOLF"; break;
+        case 4:  name="HOTEL"; break;
+        // INDIA is skipped
+        case 3:  name="JULIET"; break;
+        case 2:  name="KILO"; break;
+        case 1:  name="LIMA"; break;
+        case 0:  name="MIKE"; break; // or YANKEE
+        // Other half of the day (wrapping around)
+        case 23: name="NOVEMBER"; break;
+        case 22: name="OSCAR"; break;
+        case 21: name="PAPA"; break;
+        case 20: name="QUEBEC"; break;
+        case 19: name="ROMEO"; break;
+        case 18: name="SIERRA"; break;
+        case 17: name="TANGO"; break;
+        case 16: name="UNIFORM"; break;
+        case 15: name="VICTOR"; break;
+        case 14: name="WHISKEY"; break;
+        case 13: name="X-RAY"; break;
+    }
+
+    // Update cache
+    last_utc_hour = utc_hour;
+    last_zone_name_ptr = name;
+    return name;
+}
+
+/**
+ * Updates the Noon Zone time TextLayer if the time (seconds) has changed.
+ */
+static void update_noonzone_time(time_t current_seconds_utc) {
+    // Check if the second has changed since the last update
+    if (current_seconds_utc == last_noonzone_update_secs) {
+        return;
+    }
+
+    struct tm *utc_tm = gmtime(&current_seconds_utc);
+    if (!utc_tm) { // Check if gmtime failed
+        return;
+    }
+
+    const char *zone_name = get_noon_zone_name(utc_tm->tm_hour);
+
+    // Format as NAME:MM:SS
+    snprintf(s_noonzone_buffer, sizeof(s_noonzone_buffer),
+             "%s:%02d:%02d",
+             zone_name,
+             utc_tm->tm_min,
+             utc_tm->tm_sec);
+
+    text_layer_set_text(s_noonzone_layer, s_noonzone_buffer);
+
+    // Cache the time of this update
+    last_noonzone_update_secs = current_seconds_utc;
 }
 
 // --- TID Time Update ---
@@ -176,6 +259,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Update both time displays
   update_beat_time(seconds);
   update_tid_time(seconds, milliseconds);
+  update_noonzone_time(seconds);
 }
 
 static void main_window_load(Window *window) {
@@ -183,18 +267,25 @@ static void main_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   // Define layout constants (adjust heights based on font sizes)
-  const int16_t top_margin = 5;
-  const int16_t bottom_margin = 12;
-  const int16_t beat_layer_height = 30; // Approx height for FONT_KEY_GOTHIC_28_BOLD
-  const int16_t tid_layer_height = 30;  // Approx height for FONT_KEY_GOTHIC_24_BOLD
+  const int16_t v_padding = 2; // Vertical padding between layers
+  // Allocate heights roughly - adjust based on visual results
+  const int16_t beat_h = 30;
+  const int16_t noonzone_h = 30;
+  const int16_t tid_h = 26;
+  // Calculate total height needed (excluding top/bottom margins provided by layer positioning)
+  const int16_t total_inner_h = beat_h + noonzone_h + tid_h + 2 * v_padding;
+  // Distribute remaining vertical space as top/bottom margin
+  const int16_t top_margin = (bounds.size.h - total_inner_h) / 2;
+  const int16_t bottom_margin = bounds.size.h - total_inner_h - top_margin;
 
   // Calculate Y positions
   int16_t beat_y = top_margin;
-  int16_t tid_y = bounds.size.h - tid_layer_height - bottom_margin;
+  int16_t noonzone_y = beat_y + beat_h + v_padding;
+  int16_t tid_y = noonzone_y + noonzone_h + v_padding;
 
   // Create Beat Time TextLayer (Top)
   s_beat_layer = text_layer_create(
-      GRect(0, beat_y, bounds.size.w, beat_layer_height));
+      GRect(0, beat_y, bounds.size.w, beat_h));
   text_layer_set_background_color(s_beat_layer, GColorClear);
   text_layer_set_text_color(s_beat_layer, GColorBlack);
   text_layer_set_text(s_beat_layer, "@--.-"); // Initial placeholder
@@ -202,9 +293,19 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_beat_layer));
 
+  // Create Noon Zone Time TextLayer (Middle)
+  s_noonzone_layer = text_layer_create(
+      GRect(0, noonzone_y, bounds.size.w, noonzone_h));
+  text_layer_set_background_color(s_noonzone_layer, GColorClear);
+  text_layer_set_text_color(s_noonzone_layer, GColorBlack);
+  text_layer_set_text(s_noonzone_layer, "ZONE:--:--"); // Initial placeholder
+  text_layer_set_font(s_noonzone_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD)); // Adjust font
+  text_layer_set_text_alignment(s_noonzone_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_noonzone_layer));
+
   // Create TID TextLayer (Bottom)
   s_tid_layer = text_layer_create(
-      GRect(0, tid_y, bounds.size.w, tid_layer_height));
+      GRect(0, tid_y, bounds.size.w, tid_h));
   text_layer_set_background_color(s_tid_layer, GColorClear);
   text_layer_set_text_color(s_tid_layer, GColorBlack);
   text_layer_set_text(s_tid_layer, "loading tid..."); // Initial placeholder
@@ -217,6 +318,7 @@ static void main_window_unload(Window *window) {
   // Destroy TextLayers
   text_layer_destroy(s_beat_layer);
   text_layer_destroy(s_tid_layer); // Renamed from s_time_layer
+  text_layer_destroy(s_noonzone_layer);
 }
 
 static void init() {
@@ -237,6 +339,7 @@ static void init() {
   time_ms(&seconds, &milliseconds);
   update_beat_time(seconds); // Initial beat time
   update_tid_time(seconds, milliseconds); // Initial TID time
+  update_noonzone_time(seconds); // Initial noon zone time
 
 
   // Register with TickTimerService to update every second
