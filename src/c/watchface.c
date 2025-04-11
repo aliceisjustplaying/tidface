@@ -2,9 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h> // Required for time_t
 
+// --- Constants ---
+#define HOUR_LENGTH 3600 // Seconds in an hour
+#define DAY_LENGTH 86400 // Seconds in a day (24 * 3600)
+
+// --- Global Variables ---
 static Window *s_main_window;
-static TextLayer *s_time_layer;
+static TextLayer *s_beat_layer; // Layer for Swatch Beat Time
+static TextLayer *s_tid_layer;  // Layer for TID Time (renamed from s_time_layer)
 
 static const char S32_CHAR[] = "234567abcdefghijklmnopqrstuvwxyz";
 #define S32_CHAR_LEN (sizeof(S32_CHAR) - 1) // 32
@@ -73,15 +80,9 @@ static void createRaw_c(uint64_t timestamp, uint16_t clockid, char *tid_buffer, 
 }
 
 // Generates a new TID into tid_buffer (size must be >= 14)
-static void now_c(char *tid_buffer, size_t tid_buffer_len) {
+static void now_c(time_t seconds, uint16_t milliseconds, char *tid_buffer, size_t tid_buffer_len) {
     if (tid_buffer_len < 14) return;
 
-    time_t seconds;
-    uint16_t milliseconds;
-    // Get time with millisecond precision
-    time_ms(&seconds, &milliseconds);
-
-    // Convert to microseconds (Pebble resolution)
     uint64_t current_micros = (uint64_t)seconds * 1000000 + (uint64_t)milliseconds * 1000;
 
     // Ensure monotonicity (at microsecond level)
@@ -95,44 +96,127 @@ static void now_c(char *tid_buffer, size_t tid_buffer_len) {
     createRaw_c(current_micros, 0, tid_buffer, tid_buffer_len);
 }
 
+// --- Swatch .beat Time Code ---
+static char s_beat_buffer[7];   // Buffer for Beat time string "@XXX.X\0"
+static int last_beat_time = -1; // Cache the last displayed beat time (multiplied by 10)
 
-// --- Watchface Code ---
+/**
+ * Computes the current .beat time * 10 (0-9999)
+ * @param current_seconds_utc The current time (UTC seconds since epoch)
+ * @return The current beat time multiplied by 10.
+ */
+static int beat(time_t current_seconds_utc) {
+  // Add one hour for Biel Mean Time (BMT)
+  time_t now_bmt = current_seconds_utc + HOUR_LENGTH;
+  // Calculate seconds into the current BMT day (use unsigned for safety)
+  uint32_t day_now_bmt = now_bmt % DAY_LENGTH;
+
+  // Calculate beats * 10.
+  // Cast intermediate multiplication to 64-bit to prevent overflow.
+  int b = (int)(((uint64_t)day_now_bmt * 10000) / DAY_LENGTH);
+
+  // Clamp result just in case of edge cases (0 - 9999)
+  if (b > 9999) b = 9999;
+  if (b < 0) b = 0;
+  return b;
+}
+
+/**
+ * Updates the beat time TextLayer if the time has changed.
+ * @param current_seconds_utc The current time (UTC seconds since epoch)
+ */
+static void update_beat_time(time_t current_seconds_utc) {
+  int b = beat(current_seconds_utc); // b is 0-9999
+
+  // Only update the layer if the value has changed
+  if (b == last_beat_time) {
+    return;
+  }
+
+  int beats_integer = b / 10;    // 0-999
+  int beats_fraction = b % 10;   // 0-9
+
+  // Format as @XXX.X (e.g., @083.3, @999.9)
+  snprintf(s_beat_buffer, sizeof(s_beat_buffer), "@%03d.%d", beats_integer, beats_fraction);
+
+  // Update the TextLayer
+  text_layer_set_text(s_beat_layer, s_beat_buffer);
+
+  // Cache the newly displayed value
+  last_beat_time = b;
+}
+
+// --- TID Time Update ---
+static char s_tid_buffer[14]; // Buffer for TID string (13 chars + null)
+
+/**
+ * Updates the TID time TextLayer.
+ * Uses provided time components for efficiency.
+ */
+static void update_tid_time(time_t seconds, uint16_t milliseconds) {
+  // Generate the current TID into the buffer using provided time
+  now_c(seconds, milliseconds, s_tid_buffer, sizeof(s_tid_buffer));
+
+  // Display this TID on the TextLayer
+  // Note: TID changes every microsecond theoretically,
+  // so we update the text layer every second regardless of visible change.
+  text_layer_set_text(s_tid_layer, s_tid_buffer);
+}
+
+
+// --- Pebble Window Management ---
+
+// Handles updates from the TickTimerService
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  // Get time once for both updates
+  time_t seconds;
+  uint16_t milliseconds;
+  time_ms(&seconds, &milliseconds);
+
+  // Update both time displays
+  update_beat_time(seconds);
+  update_tid_time(seconds, milliseconds);
+}
 
 static void main_window_load(Window *window) {
-  // Get information about the Window
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  // Create the TextLayer with specific bounds
-  s_time_layer =
-      text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(58, 52), bounds.size.w, 50));
+  // Define layout constants (adjust heights based on font sizes)
+  const int16_t top_margin = 5;
+  const int16_t bottom_margin = 12;
+  const int16_t beat_layer_height = 30; // Approx height for FONT_KEY_GOTHIC_28_BOLD
+  const int16_t tid_layer_height = 30;  // Approx height for FONT_KEY_GOTHIC_24_BOLD
 
-  // Improve the layout to be more like a watchface
-  text_layer_set_background_color(s_time_layer, GColorClear);
-  text_layer_set_text_color(s_time_layer, GColorBlack);
-  // text_layer_set_text(s_time_layer, "00:00");
-  text_layer_set_font(s_time_layer,
-                      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-  text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
+  // Calculate Y positions
+  int16_t beat_y = top_margin;
+  int16_t tid_y = bounds.size.h - tid_layer_height - bottom_margin;
 
-  // Add it as a child layer to the Window's root layer
-  layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
+  // Create Beat Time TextLayer (Top)
+  s_beat_layer = text_layer_create(
+      GRect(0, beat_y, bounds.size.w, beat_layer_height));
+  text_layer_set_background_color(s_beat_layer, GColorClear);
+  text_layer_set_text_color(s_beat_layer, GColorBlack);
+  text_layer_set_text(s_beat_layer, "@--.-"); // Initial placeholder
+  text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD)); // Adjust font as needed
+  text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_beat_layer));
+
+  // Create TID TextLayer (Bottom)
+  s_tid_layer = text_layer_create(
+      GRect(0, tid_y, bounds.size.w, tid_layer_height));
+  text_layer_set_background_color(s_tid_layer, GColorClear);
+  text_layer_set_text_color(s_tid_layer, GColorBlack);
+  text_layer_set_text(s_tid_layer, "loading tid..."); // Initial placeholder
+  text_layer_set_font(s_tid_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD)); // Adjust font as needed
+  text_layer_set_text_alignment(s_tid_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_tid_layer));
 }
 
 static void main_window_unload(Window *window) {
-  text_layer_destroy(s_time_layer);
-}
-
-static void update_time() {
-  static char s_tid_buffer[14]; // Buffer for TID string (13 chars + null)
-  now_c(s_tid_buffer, sizeof(s_tid_buffer)); // Generate TID
-
-  // Display this time on the TextLayer
-  text_layer_set_text(s_time_layer, s_tid_buffer); // Display TID
-}
-
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  update_time();
+  // Destroy TextLayers
+  text_layer_destroy(s_beat_layer);
+  text_layer_destroy(s_tid_layer); // Renamed from s_time_layer
 }
 
 static void init() {
@@ -147,14 +231,22 @@ static void init() {
   // Show the Window on the watch, with animated=true
   window_stack_push(s_main_window, true);
 
-  // Update the time immediately
-  update_time();
+  // Get initial time and update display immediately
+  time_t seconds;
+  uint16_t milliseconds;
+  time_ms(&seconds, &milliseconds);
+  update_beat_time(seconds); // Initial beat time
+  update_tid_time(seconds, milliseconds); // Initial TID time
 
-  // Register with TickTimerService
+
+  // Register with TickTimerService to update every second
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 }
 
-static void deinit() { window_destroy(s_main_window); }
+static void deinit() {
+    // Destroy Window
+    window_destroy(s_main_window);
+}
 
 int main(void) {
   init();
