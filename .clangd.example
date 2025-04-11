@@ -1,0 +1,26 @@
+CompileFlags:
+  Add:
+  # Base SDK include paths (adjust if your SDK location differs)
+  - -I/Users/USERNAME_GOES_HERE/.rebbletool/rebbletool/sdk/SDKs/current/sdk-core/pebble/aplite/include
+  - -I/Users/USERNAME_GOES_HERE/.rebbletool/rebbletool/sdk/SDKs/current/sdk-core/pebble/basalt/include
+  - -I/Users/USERNAME_GOES_HERE/.rebbletool/rebbletool/sdk/SDKs/current/sdk-core/pebble/chalk/include
+  - -I/Users/USERNAME_GOES_HERE/.rebbletool/rebbletool/sdk/SDKs/current/sdk-core/pebble/diorite/include
+  - -I/Users/USERNAME_GOES_HERE/.rebbletool/rebbletool/sdk/SDKs/current/sdk-core/pebble/common/include
+
+  # Build directory include paths for generated files
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/include
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/aplite/include # If exists
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/basalt/include # If exists
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/chalk/include # If exists
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/diorite/include # If exists
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/aplite/src # For resource_ids.auto.h etc.
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/basalt/src # For resource_ids.auto.h etc.
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/chalk/src # For resource_ids.auto.h etc.
+  - -I/Users/USERNAME_GOES_HERE/src/a/tidface/build/diorite/src # For resource_ids.auto.h etc.
+
+  # Add target platform defines (optional but helpful for accuracy)
+  # Uncomment ONE of the following lines depending on your primary target
+  # - -DPEBBLE_APLITE
+  - -DPEBBLE_BASALT
+  # - -DPEBBLE_CHALK
+  # - -DPEBBLE_DIORITE
