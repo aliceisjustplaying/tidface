@@ -6,7 +6,7 @@
 
 // --- Clock Module Includes ---
 #include "clock_beat.h"
-// #include "clock_noonzone.h" // Removed
+// #include "clock_noonzone.h"
 #include "clock_closest_noon.h"
 #include "clock_tid.h"
 #include "clock_decimal.h"
@@ -137,7 +137,6 @@ static void init() {
 }
 
 static void deinit() {
-    // Destroy Window
     window_destroy(s_main_window);
 }
 
