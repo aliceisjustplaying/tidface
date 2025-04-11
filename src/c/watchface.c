@@ -3,6 +3,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h> // Required for time_t
+#include <math.h>  // Required for fabsf
+#include <stdbool.h> // Required for bool type
+
+// --- Include Generated Timezone Data ---
+// This assumes tz_list.c defines TzInfo, tz_list[], and tz_list_count
+#include "tz_list.c"
 
 // --- Constants ---
 #define HOUR_LENGTH 3600 // Seconds in an hour
@@ -13,6 +19,7 @@ static Window *s_main_window;
 static TextLayer *s_beat_layer; // Layer for Swatch Beat Time
 static TextLayer *s_tid_layer;  // Layer for TID Time (renamed from s_time_layer)
 static TextLayer *s_noonzone_layer; // Layer for Noon Zone Time
+static TextLayer *s_closest_noon_layer; // Layer for Closest-to-Noon TZ
 
 static const char S32_CHAR[] = "234567abcdefghijklmnopqrstuvwxyz";
 #define S32_CHAR_LEN (sizeof(S32_CHAR) - 1) // 32
@@ -229,6 +236,152 @@ static void update_noonzone_time(time_t current_seconds_utc) {
     last_noonzone_update_secs = current_seconds_utc;
 }
 
+// --- Closest to Noon Timezone Code ---
+#define NOON_SECONDS (12 * 3600L) // Noon in seconds past midnight
+static char s_closest_noon_buffer[32]; // Buffer for "City Name:MM:SS\0"
+static int last_closest_noon_update_secs = -1; // Cache based on seconds
+static int last_closest_candidate_indices[TZ_LIST_COUNT]; // Cache indices of previous winners
+static int last_closest_candidate_count = 0;             // Cache count of previous winners
+static const char* last_chosen_closest_name = NULL;      // Cache the specific name pointer displayed
+
+/**
+ * Comparison function for qsort (integers).
+ */
+static int compare_ints(const void *a, const void *b) {
+   return (*(int*)a - *(int*)b);
+}
+
+/**
+ * Checks if two arrays of integers (candidate indices) are identical.
+ * Assumes arrays are sorted beforehand.
+ */
+static bool are_candidate_sets_equal(int* set1, int count1, int* set2, int count2) {
+    if (count1 != count2) {
+        return false;
+    }
+    // Assumes counts are equal now
+    for (int i = 0; i < count1; ++i) {
+        if (set1[i] != set2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Updates the Closest-to-Noon timezone TextLayer if the second has changed.
+ */
+static void update_closest_noon_time(time_t current_seconds_utc) {
+    // --- Caching --- 
+    if (current_seconds_utc == last_closest_noon_update_secs) {
+        return;
+    }
+
+    // --- Get Current UTC MM:SS --- 
+    struct tm *utc_tm = gmtime(&current_seconds_utc);
+    if (!utc_tm) return;
+    int utc_min = utc_tm->tm_min;
+    int utc_sec = utc_tm->tm_sec;
+
+    // --- Calculate UTC seconds past midnight --- 
+    // Note: tm_yday is 0-365, time_t is secs since epoch. Simpler to use modulo.
+    uint32_t utc_seconds_today = current_seconds_utc % DAY_LENGTH;
+
+    // --- Find Timezone Closest to Noon --- 
+    long min_diff_secs = DAY_LENGTH; // Init with impossibly large difference
+    int current_candidate_indices[TZ_LIST_COUNT]; // Store indices of current winners
+    int current_candidate_count = 0;
+
+    for (int i = 0; i < TZ_LIST_COUNT; ++i) {
+        // Calculate offset in seconds (handle float)
+        long offset_seconds = (long)(tz_list[i].offset_hours * 3600.0f);
+
+        // Calculate local time in seconds past midnight (handle wrap around DAY_LENGTH)
+        long local_seconds_today = (long)utc_seconds_today + offset_seconds;
+        // Modulo that handles negative results correctly 
+        local_seconds_today = (local_seconds_today % DAY_LENGTH + DAY_LENGTH) % DAY_LENGTH;
+
+        // Calculate the shortest difference to noon (around the 24h clock)
+        long diff1 = labs(local_seconds_today - NOON_SECONDS); // labs for long
+        long current_min_diff = (diff1 <= DAY_LENGTH / 2) ? diff1 : DAY_LENGTH - diff1;
+
+        // --- Update candidate list --- 
+        if (current_min_diff < min_diff_secs) {
+            // New minimum found
+            min_diff_secs = current_min_diff;
+            current_candidate_indices[0] = i;
+            current_candidate_count = 1;
+        } else if (current_min_diff == min_diff_secs) {
+            // Tie found, add to candidates (if space permits - should be fine)
+            if (current_candidate_count < TZ_LIST_COUNT) { // Safety check
+                current_candidate_indices[current_candidate_count++] = i;
+            }
+        }
+    }
+
+    // --- Select Final Timezone and Name --- 
+    const char *final_name = "???";
+
+    // Sort current candidates for comparison
+    if (current_candidate_count > 1) {
+        qsort(current_candidate_indices, current_candidate_count, sizeof(int), compare_ints);
+    }
+
+    // Check if the winning set is the same as last time
+    bool reuse_last_name = false;
+    if (last_chosen_closest_name != NULL) { // Only reuse if we have a previous name
+         // Assume last_closest_candidate_indices is already sorted from previous run
+         if (are_candidate_sets_equal(current_candidate_indices, current_candidate_count,
+                                        last_closest_candidate_indices, last_closest_candidate_count)) {
+             reuse_last_name = true;
+             final_name = last_chosen_closest_name; // Tentatively reuse
+         }
+    }
+
+    // If not reusing, or first time, perform selection
+    if (!reuse_last_name) {
+        if (current_candidate_count > 0) {
+            int chosen_list_index;
+            if (current_candidate_count == 1) {
+                chosen_list_index = current_candidate_indices[0];
+            } else {
+                // Randomly select among tied candidates
+                chosen_list_index = current_candidate_indices[rand() % current_candidate_count];
+            }
+
+            // Select random name if multiple exist for the chosen offset
+            const TzInfo *chosen_tz = &tz_list[chosen_list_index];
+            if (chosen_tz->name_count > 0) {
+                int name_index = (chosen_tz->name_count == 1) ? 0 : (rand() % chosen_tz->name_count);
+                if (name_index < chosen_tz->name_count) { // Bounds check
+                   final_name = chosen_tz->names[name_index].name;
+                }
+            }
+
+            // --- Update Cache for next time --- 
+            last_chosen_closest_name = final_name; // Cache the chosen name pointer
+            // Copy current candidates to last candidates cache (already sorted)
+            memcpy(last_closest_candidate_indices, current_candidate_indices, current_candidate_count * sizeof(int));
+            last_closest_candidate_count = current_candidate_count;
+
+        } else {
+             // Should not happen if tz_list is not empty, but handle defensively
+             last_chosen_closest_name = NULL; // Reset cache if no candidates found
+             last_closest_candidate_count = 0;
+        }
+    } // end selection block
+
+    // --- Format Output and Update Layer --- 
+    // Use the determined final_name (either reused or newly selected)
+    snprintf(s_closest_noon_buffer, sizeof(s_closest_noon_buffer),
+             "%s:%02d:%02d", final_name, utc_min, utc_sec);
+
+    text_layer_set_text(s_closest_noon_layer, s_closest_noon_buffer);
+
+    // Cache the update time
+    last_closest_noon_update_secs = current_seconds_utc;
+}
+
 // --- TID Time Update ---
 static char s_tid_buffer[14]; // Buffer for TID string (13 chars + null)
 
@@ -260,6 +413,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_beat_time(seconds);
   update_tid_time(seconds, milliseconds);
   update_noonzone_time(seconds);
+  update_closest_noon_time(seconds);
 }
 
 static void main_window_load(Window *window) {
@@ -267,21 +421,32 @@ static void main_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   // Define layout constants (adjust heights based on font sizes)
-  const int16_t v_padding = 2; // Vertical padding between layers
+  const int16_t v_padding = 1; // Tighten padding for 4 layers
   // Allocate heights roughly - adjust based on visual results
-  const int16_t beat_h = 30;
-  const int16_t noonzone_h = 30;
-  const int16_t tid_h = 26;
+  const int16_t beat_h = 28;
+  const int16_t noonzone_h = 26;
+  const int16_t closest_h = 26;
+  const int16_t tid_h = 26; 
   // Calculate total height needed (excluding top/bottom margins provided by layer positioning)
-  const int16_t total_inner_h = beat_h + noonzone_h + tid_h + 2 * v_padding;
+  const int16_t total_inner_h = beat_h + noonzone_h + closest_h + tid_h + 3 * v_padding;
   // Distribute remaining vertical space as top/bottom margin
   const int16_t top_margin = (bounds.size.h - total_inner_h) / 2;
-  const int16_t bottom_margin = bounds.size.h - total_inner_h - top_margin;
+
+  // Font sizes (adjust as needed)
+  #define BEAT_FONT FONT_KEY_GOTHIC_24_BOLD
+  #define NOONZONE_FONT FONT_KEY_GOTHIC_18_BOLD // Smaller for longer name
+  #define CLOSEST_FONT FONT_KEY_GOTHIC_18_BOLD // Smaller for city name
+  #define TID_FONT FONT_KEY_GOTHIC_18_BOLD    // Smaller TID
 
   // Calculate Y positions
-  int16_t beat_y = top_margin;
-  int16_t noonzone_y = beat_y + beat_h + v_padding;
-  int16_t tid_y = noonzone_y + noonzone_h + v_padding;
+  int16_t current_y = top_margin;
+  int16_t beat_y = current_y;
+  current_y += beat_h + v_padding;
+  int16_t noonzone_y = current_y;
+  current_y += noonzone_h + v_padding;
+  int16_t closest_y = current_y;
+  current_y += closest_h + v_padding;
+  int16_t tid_y = current_y;
 
   // Create Beat Time TextLayer (Top)
   s_beat_layer = text_layer_create(
@@ -289,7 +454,7 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_beat_layer, GColorClear);
   text_layer_set_text_color(s_beat_layer, GColorBlack);
   text_layer_set_text(s_beat_layer, "@--.-"); // Initial placeholder
-  text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD)); // Adjust font as needed
+  text_layer_set_font(s_beat_layer, fonts_get_system_font(BEAT_FONT));
   text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_beat_layer));
 
@@ -299,9 +464,19 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_noonzone_layer, GColorClear);
   text_layer_set_text_color(s_noonzone_layer, GColorBlack);
   text_layer_set_text(s_noonzone_layer, "ZONE:--:--"); // Initial placeholder
-  text_layer_set_font(s_noonzone_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD)); // Adjust font
+  text_layer_set_font(s_noonzone_layer, fonts_get_system_font(NOONZONE_FONT));
   text_layer_set_text_alignment(s_noonzone_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_noonzone_layer));
+
+  // Create Closest Noon Time TextLayer (Middle-Bottom)
+  s_closest_noon_layer = text_layer_create(
+      GRect(0, closest_y, bounds.size.w, closest_h));
+  text_layer_set_background_color(s_closest_noon_layer, GColorClear);
+  text_layer_set_text_color(s_closest_noon_layer, GColorBlack);
+  text_layer_set_text(s_closest_noon_layer, "City:--:--"); // Initial placeholder
+  text_layer_set_font(s_closest_noon_layer, fonts_get_system_font(CLOSEST_FONT));
+  text_layer_set_text_alignment(s_closest_noon_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_closest_noon_layer));
 
   // Create TID TextLayer (Bottom)
   s_tid_layer = text_layer_create(
@@ -309,7 +484,7 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_tid_layer, GColorClear);
   text_layer_set_text_color(s_tid_layer, GColorBlack);
   text_layer_set_text(s_tid_layer, "loading tid..."); // Initial placeholder
-  text_layer_set_font(s_tid_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD)); // Adjust font as needed
+  text_layer_set_font(s_tid_layer, fonts_get_system_font(TID_FONT));
   text_layer_set_text_alignment(s_tid_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_tid_layer));
 }
@@ -319,6 +494,7 @@ static void main_window_unload(Window *window) {
   text_layer_destroy(s_beat_layer);
   text_layer_destroy(s_tid_layer); // Renamed from s_time_layer
   text_layer_destroy(s_noonzone_layer);
+  text_layer_destroy(s_closest_noon_layer);
 }
 
 static void init() {
@@ -340,6 +516,7 @@ static void init() {
   update_beat_time(seconds); // Initial beat time
   update_tid_time(seconds, milliseconds); // Initial TID time
   update_noonzone_time(seconds); // Initial noon zone time
+  update_closest_noon_time(seconds); // Initial closest noon time
 
 
   // Register with TickTimerService to update every second
