@@ -3,6 +3,7 @@
 #include <stdint.h> // For uint32_t, uint64_t
 #include <time.h>   // For time_t
 #include <stdio.h>  // For snprintf
+#include "text_layer_util.h"
 
 #define HOUR_LENGTH 3600
 #define DAY_LENGTH 86400
@@ -40,15 +41,7 @@ static void format_beat_time_string(char* buffer, size_t buffer_size, int b) {
 // --- Pebble UI Interface Functions ---
 
 TextLayer* clock_beat_init(GRect bounds, Layer *window_layer) {
-    TextLayer* layer = text_layer_create(bounds);
-    text_layer_set_background_color(layer, GColorClear);
-    text_layer_set_text_color(layer, GColorBlack);
-    text_layer_set_text(layer, "@--.-"); // Initial placeholder
-    #define BEAT_FONT FONT_KEY_GOTHIC_24_BOLD // Keep font definitions near usage
-    text_layer_set_font(layer, fonts_get_system_font(BEAT_FONT));
-    text_layer_set_text_alignment(layer, GTextAlignmentCenter);
-    layer_add_child(window_layer, text_layer_get_layer(layer));
-    return layer;
+    return text_layer_util_create(bounds, window_layer, "@--.-", FONT_KEY_GOTHIC_24_BOLD);
 }
 
 void clock_beat_deinit(TextLayer *layer) {
@@ -73,5 +66,3 @@ void clock_beat_update(TextLayer *layer, time_t current_seconds_utc) {
     text_layer_set_text(layer, s_beat_buffer);
     last_beat_time = b;
 }
-
-// Removed clock_beat_get_time_string wrapper as formatting logic moved

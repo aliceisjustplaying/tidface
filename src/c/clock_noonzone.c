@@ -3,6 +3,7 @@
 #include <time.h>   // For time_t, struct tm, gmtime
 #include <string.h> // For NULL definition (consider stddef.h?)
 #include <stdio.h>  // For snprintf
+#include "text_layer_util.h"
 
 // --- Static variables specific to Noon Zone Clock ---
 static char s_noonzone_buffer[16]; // Buffer for "NAME:MM:SS\0"
@@ -56,14 +57,7 @@ static const char* get_noon_zone_name(int utc_hour) {
 // --- Pebble UI Interface Functions ---
 
 TextLayer* clock_noonzone_init(GRect bounds, Layer *window_layer) {
-    TextLayer* layer = text_layer_create(bounds);
-    text_layer_set_background_color(layer, GColorClear);
-    text_layer_set_text_color(layer, GColorBlack);
-    text_layer_set_text(layer, "ZONE:--:--"); // Initial placeholder
-    #define NOONZONE_FONT FONT_KEY_GOTHIC_18_BOLD // Keep font definitions near usage
-    text_layer_set_font(layer, fonts_get_system_font(NOONZONE_FONT));
-    text_layer_set_text_alignment(layer, GTextAlignmentCenter);
-    layer_add_child(window_layer, text_layer_get_layer(layer));
+    TextLayer* layer = text_layer_util_create(bounds, window_layer, "ZONE:--:--", FONT_KEY_GOTHIC_18_BOLD);
     return layer;
 }
 

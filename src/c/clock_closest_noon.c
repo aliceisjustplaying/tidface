@@ -6,6 +6,8 @@
 #include <stdbool.h>// For bool
 #include <limits.h> // For LONG_MAX // Not strictly needed anymore, but harmless
 #include <string.h> // For strcmp, strncmp
+#include <stdio.h>  // For snprintf
+#include "text_layer_util.h"
 
 // Include the generated timezone data structure definitions and list
 // This must contain TzInfo, tz_list[], and TZ_LIST_COUNT
@@ -154,14 +156,7 @@ static void update_selected_timezone_and_city(time_t current_utc_t) {
 // --- Interface Functions (Pebble only) ---
 
 TextLayer* clock_closest_noon_init(GRect bounds, Layer *window_layer) {
-    TextLayer* layer = text_layer_create(bounds);
-    text_layer_set_background_color(layer, GColorClear);
-    text_layer_set_text_color(layer, GColorBlack);
-    text_layer_set_text(layer, "Wait..."); // Initial placeholder
-    #define CLOSEST_FONT FONT_KEY_GOTHIC_18_BOLD // Keep font definitions near usage
-    text_layer_set_font(layer, fonts_get_system_font(CLOSEST_FONT));
-    text_layer_set_text_alignment(layer, GTextAlignmentCenter);
-    layer_add_child(window_layer, text_layer_get_layer(layer));
+    TextLayer* layer = text_layer_util_create(bounds, window_layer, "Wait...", FONT_KEY_GOTHIC_18_BOLD);
 
     // Initialize static vars
     s_selected_city_name = "Wait...";
