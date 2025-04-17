@@ -36,120 +36,52 @@ static float s_selected_offset_hours = 0.0f; // Store the active offset
  * @param current_utc_t The current UTC time as time_t.
  */
 static void update_selected_timezone_and_city(time_t current_utc_t) {
-    // Seed random number generator (important for random selection)
+    // Seed for consistent randomness when multiple zones tie
     srand(current_utc_t);
-
-    // Find the minimum local time that is >= noon
-    long min_valid_local_seconds = DAY_SECONDS; // Initialize higher than any possible time
-
-    // Structure to hold candidate timezone info
-    typedef struct {
-        int index;             // Index in tz_list
-        long local_secs_today; // Local time in seconds past midnight
-        float active_offset_h; // The offset used for calculation
-    } ZoneCandidate;
-
-    ZoneCandidate candidates[TZ_LIST_COUNT];
-    int candidate_count = 0; // Count of zones with time >= noon
-
-    uint32_t utc_seconds_today = current_utc_t % DAY_SECONDS;
-
-    // --- Pass 1: Calculate local time for all zones, filter >= noon, find minimum valid time ---
-    for (int i = 0; i < TZ_LIST_COUNT; ++i) {
+    uint32_t utc_secs = current_utc_t % DAY_SECONDS;
+    long best_delta = LONG_MAX;
+    int best_count = 0;
+    int best_candidates[TZ_LIST_COUNT];
+    // Find zones that have local time >= noon and minimal seconds past noon
+    for (int i = 0; i < (int)TZ_LIST_COUNT; ++i) {
         const TzInfo *tz = &tz_list[i];
-        bool is_dst_active = false;
-
-        // --- Determine if DST is active ---
-        if (tz->dst_start_utc != 0LL && tz->dst_end_utc != 0LL) {
-            int64_t start_time = tz->dst_start_utc;
-            int64_t end_time = tz->dst_end_utc;
-            int64_t current_time_64 = (int64_t)current_utc_t;
-            // Standard check for non-wrapping interval
-            if (start_time <= end_time) {
-                if (current_time_64 >= start_time && current_time_64 < end_time) {
-                    is_dst_active = true;
-                }
-            }
-            // Check for wrapping interval (e.g., Southern Hemisphere DST)
-            else {
-                if (current_time_64 >= start_time || current_time_64 < end_time) {
-                    is_dst_active = true;
-                }
+        // Determine DST active
+        bool is_dst = false;
+        if (tz->dst_start_utc && tz->dst_end_utc) {
+            int64_t now = (int64_t)current_utc_t;
+            if ((tz->dst_start_utc <= tz->dst_end_utc && now >= tz->dst_start_utc && now < tz->dst_end_utc) ||
+                (tz->dst_start_utc > tz->dst_end_utc && (now >= tz->dst_start_utc || now < tz->dst_end_utc))) {
+                is_dst = true;
             }
         }
-
-        float active_offset_hours = is_dst_active ? tz->dst_offset_hours : tz->std_offset_hours;
-        long offset_seconds = (long)(active_offset_hours * 3600.0f);
-
-        // Calculate local time in seconds past local midnight
-        long local_seconds_today = ((long)utc_seconds_today + offset_seconds);
-        // Ensure positive modulo result within the day
-        local_seconds_today %= DAY_SECONDS;
-        if (local_seconds_today < 0) {
-            local_seconds_today += DAY_SECONDS;
-        }
-
-        // --- Check if local time is at or after noon ---
-        if (local_seconds_today >= NOON_SECONDS) {
-            // Store as a potential candidate
-            if (candidate_count < TZ_LIST_COUNT) {
-                 candidates[candidate_count].index = i;
-                 candidates[candidate_count].local_secs_today = local_seconds_today;
-                 candidates[candidate_count].active_offset_h = active_offset_hours;
-                 candidate_count++; // Increment count of valid candidates
-            }
-            // Update the minimum valid local time found so far
-            if (local_seconds_today < min_valid_local_seconds) {
-                min_valid_local_seconds = local_seconds_today;
-            }
+        float off_h = is_dst ? tz->dst_offset_hours : tz->std_offset_hours;
+        long local_secs = (long)utc_secs + (long)(off_h * 3600.0f);
+        local_secs %= DAY_SECONDS;
+        if (local_secs < 0) local_secs += DAY_SECONDS;
+        if (local_secs < NOON_SECONDS) continue;
+        long delta = local_secs - NOON_SECONDS;
+        if (delta < best_delta) {
+            best_delta = delta;
+            best_count = 0;
+            best_candidates[best_count++] = i;
+        } else if (delta == best_delta && best_count < (int)TZ_LIST_COUNT) {
+            best_candidates[best_count++] = i;
         }
     }
-
-    // --- Pass 2: Collect all candidates matching the minimum valid local time ---
-    int best_candidates_indices[TZ_LIST_COUNT]; // Stores indices into 'candidates' array
-    int best_candidate_count = 0;
-    if (candidate_count > 0) { // Only proceed if we found any zones >= noon
-        for (int k = 0; k < candidate_count; ++k) {
-            // Check if this candidate's time is the minimum valid time we found
-            if (candidates[k].local_secs_today == min_valid_local_seconds) {
-                if (best_candidate_count < TZ_LIST_COUNT) {
-                    best_candidates_indices[best_candidate_count++] = k; // Store index into 'candidates' array
-                }
-            }
-        }
-    }
-
-
-    // --- Select the winning timezone and city ---
-    if (best_candidate_count > 0) {
-        // Randomly select one of the best candidates
-        int list_pos = (best_candidate_count == 1) ? 0 : (rand() % best_candidate_count);
-        int winning_candidate_idx_in_candidates = best_candidates_indices[list_pos]; // Index in 'candidates' array
-
-        int chosen_zone_list_index = candidates[winning_candidate_idx_in_candidates].index; // Index in tz_list
-        const TzInfo *chosen_tz = &tz_list[chosen_zone_list_index];
-
-        // Randomly select a city name from the winning timezone
-        if (chosen_tz->name_count > 0) {
-            int name_index = (chosen_tz->name_count == 1) ? 0 : (rand() % chosen_tz->name_count);
-            // Basic bounds check (should always be true if rand() works correctly)
-            if (name_index >= 0 && name_index < chosen_tz->name_count) {
-                s_selected_city_name = chosen_tz->names[name_index].name;
-            } else {
-                s_selected_city_name = "ERR:NAME"; // Safety fallback
-            }
-        } else {
-            s_selected_city_name = "ERR:NO_NM"; // Safety fallback
-        }
-        // Store the active offset that was used for this winning timezone
-        s_selected_offset_hours = candidates[winning_candidate_idx_in_candidates].active_offset_h;
-
+    if (best_count == 0) {
+        s_selected_city_name = "Wait...";
+        s_selected_offset_hours = 0.0f;
     } else {
-        // This case handles when NO timezone has local time >= 12:00:00 PM
-        s_selected_city_name = "Wait..."; // Indicate searching or fallback state
-        s_selected_offset_hours = 0.0f;     // Reset offset
+        int pick = (best_count == 1) ? 0 : (rand() % best_count);
+        int idx = best_candidates[pick];
+        const TzInfo *tz = &tz_list[idx];
+        bool is_dst = (current_utc_t >= tz->dst_start_utc && current_utc_t < tz->dst_end_utc);
+        s_selected_offset_hours = is_dst ? tz->dst_offset_hours : tz->std_offset_hours;
+        int cnt = tz->name_count;
+        int ni = (cnt == 1) ? 0 : (rand() % cnt);
+        s_selected_city_name = tz_name_pool[tz->name_offset + ni];
     }
-    s_last_re_evaluation_time = current_utc_t; // Record when we last did this
+    s_last_re_evaluation_time = current_utc_t;
 }
 
 
