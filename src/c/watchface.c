@@ -4,14 +4,15 @@
 
 // Clock modules
 #include "clock_beat.h"
-#include "clock_closest_noon.h"
+#include "clock_closest_airport_noon.h"
 #include "clock_tid.h"
-#include "clock_decimal.h"
+// #include "clock_decimal.h"
 
 // --- Window and Layer Globals ---
 static Window *s_main_window;
-static TextLayer *s_closest_noon_city_layer;
-static TextLayer *s_closest_noon_time_layer;
+static TextLayer *s_airport_noon_code_layer;
+static TextLayer *s_airport_noon_name_layer;
+static TextLayer *s_airport_noon_time_layer;
 static TextLayer *s_tid_layer;
 static TextLayer *s_beat_layer;
 
@@ -23,7 +24,9 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   uint16_t milliseconds;
   time_ms(&seconds, &milliseconds);
   // Hero: Closest Noon (update city and time layers)
-  clock_closest_noon_update(s_closest_noon_city_layer, s_closest_noon_time_layer, seconds);
+  clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds);
+  // Update airport name below the code
+  text_layer_set_text(s_airport_noon_name_layer, s_selected_name);
   // Footer: TID (larger) and Beat (smaller)
   clock_tid_update(s_tid_layer, seconds, milliseconds);
   clock_beat_update(s_beat_layer, seconds);
@@ -35,16 +38,22 @@ static void main_window_load(Window *window) {
   // Hero area for Closest Noon: split into city + large time
   int footer_h = 48;
   int hero_h = bounds.size.h - footer_h;
-  const int city_h = 24;
-  const int usable_h = hero_h - city_h;
+  const int city_h = 28;
+  const int name_h = 22;  // height for airport name (increased to fit descenders)
+  const int usable_h = hero_h - city_h - name_h;
   const int time_font_h = 42;
   // Create city name line
-  s_closest_noon_city_layer = clock_closest_noon_city_init(
+  s_airport_noon_code_layer = clock_closest_airport_noon_code_init(
       GRect(0, 0, bounds.size.w, city_h), window_layer);
-  text_layer_set_text_alignment(s_closest_noon_city_layer, GTextAlignmentCenter);
+  text_layer_set_text_alignment(s_airport_noon_code_layer, GTextAlignmentCenter);
+  // Create airport name line below the IATA code
+  s_airport_noon_name_layer = text_layer_create(GRect(0, city_h, bounds.size.w, name_h));
+  text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
   // Create hero time line, vertically centered
-  int time_y = city_h + (usable_h - time_font_h) / 2;
-  s_closest_noon_time_layer = clock_closest_noon_time_init(
+  int time_y = city_h + name_h + (usable_h - time_font_h) / 2 - 5;
+  s_airport_noon_time_layer = clock_closest_airport_noon_time_init(
       GRect(0, time_y, bounds.size.w, time_font_h), window_layer);
 
   // Setup footer area
@@ -68,8 +77,9 @@ static void main_window_load(Window *window) {
 
 static void main_window_unload(Window *window) {
   // Destroy Closest Noon layers
-  clock_closest_noon_deinit(s_closest_noon_city_layer);
-  clock_closest_noon_deinit(s_closest_noon_time_layer);
+  clock_closest_airport_noon_deinit(s_airport_noon_code_layer);
+  text_layer_destroy(s_airport_noon_name_layer);
+  clock_closest_airport_noon_deinit(s_airport_noon_time_layer);
   clock_tid_deinit(s_tid_layer);
   clock_beat_deinit(s_beat_layer);
 }
