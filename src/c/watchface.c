@@ -52,7 +52,7 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
   // Create hero time line, vertically centered
-  int time_y = city_h + name_h + (usable_h - time_font_h) / 2 - 5;
+  int time_y = city_h + name_h + (usable_h - time_font_h) / 2 - 7;
   s_airport_noon_time_layer = clock_closest_airport_noon_time_init(
       GRect(0, time_y, bounds.size.w, time_font_h), window_layer);
 
