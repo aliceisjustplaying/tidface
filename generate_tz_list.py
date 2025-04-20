@@ -1,6 +1,7 @@
 # Requires Python 3.9+ for zoneinfo
 import zoneinfo
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 # No unused imports found (time is used for .timestamp())
 
 # Helper to get offset and DST component safely
@@ -24,6 +25,7 @@ def get_tz_details(tz_name: str, dt_utc: datetime) -> tuple[int, timedelta] | No
     return None
 
 # Function to find DST transitions within a year
+@lru_cache(maxsize=None)
 def find_dst_transitions_accurate(tz_name: str, year: int) -> tuple[int, int, int, int]:
     """ Finds precise DST transition UTC timestamps for a given year.
         Returns (std_offset_sec, dst_offset_sec, last_start_utc_ts, last_end_utc_ts)
@@ -171,9 +173,16 @@ def generate_tz_list_c_code():
             if city_name not in processed_zones[key_tuple]["names"]:
                 processed_zones[key_tuple]["names"].append(city_name)
 
-    # Convert dict values to a list and sort primarily by standard offset, then DST offset
-    # Sort key uses the seconds offset stored in the dictionary value
-    tz_data_list = sorted(processed_zones.values(), key=lambda x: (x["std_offset_s"], x["dst_offset_s"]))
+    # Convert dict values to a list and sort by std offset, then DST offset, then by DST start/end to keep consistent ordering
+    tz_data_list = sorted(
+        processed_zones.values(),
+        key=lambda x: (
+            x["std_offset_s"],
+            x["dst_offset_s"],
+            x["start_utc"],
+            x["end_utc"]
+        )
+    )
     print(f"Generated data for {len(tz_data_list)} unique offset/DST rule combinations.")
 
     # --- C Code Generation: Flatten name pool and tz_list entries ---

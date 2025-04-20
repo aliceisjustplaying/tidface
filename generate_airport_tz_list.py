@@ -199,7 +199,7 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
     3) Fallback for missing offsets (min 1, max max_bucket) using classification + traffic.
     4) Distribute codes evenly across DST buckets, cap each to max_bucket.
     """
-    year = datetime.utcnow().year
+    year = datetime.now(timezone.utc).year
     airport_db = airportsdata.load("IATA")
     # Ensure unique HTML airport entries by IATA code
     seen_iatas: set[str] = set()
@@ -437,8 +437,8 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument(
         "--max-bucket",
         type=int,
-        default=3,
-        help="Maximum number of airport codes to include per DST bucket (default: 3)",
+        default=10,
+        help="Maximum number of airport codes to include per DST bucket (default: 10)",
     )
     args = parser.parse_args(argv)
 
