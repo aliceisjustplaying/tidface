@@ -26,6 +26,7 @@ from typing import Dict, List, Tuple
 from tz_common import find_dst_transitions as _find_dst_transitions
 from bs4 import BeautifulSoup  # type: ignore
 import airportsdata
+from timezonefinder import TimezoneFinder
 import pandas as pd
 
 # ---------------------------------------------------------------------------
@@ -117,6 +118,7 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
     """
     year = datetime.now(timezone.utc).year
     airport_db = airportsdata.load("IATA")
+
     # Ensure unique HTML airport entries by IATA code
     seen_iatas: set[str] = set()
     unique_airports: List[Tuple[str, str]] = []
@@ -130,6 +132,14 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
     if 'iata' in df_all.columns:
         df_all = df_all.drop(columns=['iata'])
     df_all = df_all.reset_index().rename(columns={'index': 'iata'})
+    # Recompute tz field from lat/lon to correct misclassified zones _before_ we
+    # derive any offset‑related columns (important for DUT / America/Adak etc.)
+    tf = TimezoneFinder()
+    df_all['tz'] = df_all.apply(
+        lambda row: tf.timezone_at(lat=row.get('lat'), lng=row.get('lon')) or row.get('tz'),
+        axis=1,
+    )
+
     # Merge OurAirports classification
     try:
         oa = pd.read_csv("https://ourairports.com/data/airports.csv", usecols=["iata_code","type","scheduled_service"])  # type: ignore
@@ -143,7 +153,7 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
     traffic_dict = traffic_counts.to_dict()
     # Map route hits using apply to ensure a Series
     df_all['route_hits'] = df_all['iata'].apply(lambda x: traffic_dict.get(x, 0)).astype(int)
-    # Compute standard offset seconds for each record
+    # Compute standard offset seconds for each record (now that tz is fixed)
     df_all['std_offset_s'] = df_all['tz'].apply(lambda tz: _find_dst_transitions(tz, year)[0])
 
     # Fallback selector for a given std_offset
@@ -192,8 +202,16 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
         std_s, dst_s, start_ts, end_ts = _find_dst_transitions(tz_name, year)
         key = (std_s, dst_s, start_ts, end_ts)
         if key not in full_buckets:
-            full_buckets[key] = { 'std': std_s, 'dst': dst_s, 'start': start_ts, 'end': end_ts }
+            full_buckets[key] = {
+                'std': std_s,
+                'dst': dst_s,
+                'start': start_ts,
+                'end': end_ts,
+                'tz_names': [tz_name],
+            }
             group_keys.setdefault(std_s, []).append(key)
+        else:
+            full_buckets[key]['tz_names'].append(tz_name)
 
     # 2) Collect codes from HTML for each std_offset (popular timezones)
     group_codes: Dict[int, List[str]] = {}
@@ -216,41 +234,63 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
         if not group_codes.get(std_s):
             group_codes[std_s] = _fallback_codes(std_s)
 
-    # 4) Assign popular codes to their actual DST buckets, then fallback for empty
+    # 4) Assign popular & fallback codes to their actual DST buckets
     # initialize codes list for each bucket
-    for key, meta in full_buckets.items():
+    for bucket_key, meta in full_buckets.items():
         meta['codes'] = []
-    # populate HTML-based codes into their real tz variant buckets
+    used_codes: set[str] = set()
+
+    def _assign_to_bucket(iata_code: str):
+        if iata_code in used_codes:
+            return False
+        rec = airport_db.get(iata_code)
+        if rec and rec.get('tz'):
+            std2, dst2, st2, ed2 = _find_dst_transitions(rec['tz'], year)
+            key = (std2, dst2, st2, ed2)
+            if key in full_buckets:
+                full_buckets[key]['codes'].append(iata_code)
+                used_codes.add(iata_code)
+                return True
+        return False
+
     for std_s, codes in group_codes.items():
         for iata in codes:
-            rec = airport_db.get(iata)
-            if rec and rec.get('tz'):
-                std2, dst2, st2, ed2 = _find_dst_transitions(rec['tz'], year)
-                bucket_key = (std2, dst2, st2, ed2)
-                if bucket_key in full_buckets:
-                    full_buckets[bucket_key]['codes'].append(iata)
+            _assign_to_bucket(iata)
+
     # fallback for buckets still empty: only populate the first empty bucket per std-offset
     for std_s, keys in group_keys.items():
-        # track HTML-derived codes for this std-offset
         assigned = set(group_codes.get(std_s, []))
-        # prepare a one-time fallback candidate list, filtered of already assigned
-        fallback_candidates = [c for c in _fallback_codes(std_s) if c not in assigned]
-        fallback_used = False
+        fallback_candidates = [c for c in group_codes.get(std_s, []) if c not in used_codes]
+        # track if we've used fallback for this std-offset
+        used = False
         for bucket_key in keys:
             codes_list = full_buckets[bucket_key].get('codes', [])
-            if not codes_list and not fallback_used and fallback_candidates:
-                # assign up to max_bucket fallback codes to first empty bucket
-                if max_bucket > 0:
-                    codes_list = fallback_candidates[:max_bucket]
+            if not codes_list and not used:
+                # pick first unassigned fallback candidates
+                fallback_pool = [c for c in group_codes.get(std_s, []) if c not in used_codes]
+                for candidate in fallback_pool:
+                    if _assign_to_bucket(candidate):
+                        codes_list = [candidate]
+                        break
                 else:
-                    codes_list = fallback_candidates[:]
-                fallback_used = True
-            # cap any list to max_bucket if needed
-            if codes_list and max_bucket > 0:
-                codes_list = codes_list[:max_bucket]
+                    codes_list = []
+                used = True
             full_buckets[bucket_key]['codes'] = codes_list
-            # record assigned codes so we don't reuse them (though fallback is one-shot)
-            assigned.update(codes_list)
+
+    # FINAL safety pass: if a bucket is still empty try to grab 1 airport that
+    # actually sits in *this* timezone (e.g. DUT for America/Adak). This never
+    # duplicates because we consult used_codes.
+    for bucket_key, meta in full_buckets.items():
+        if meta['codes']:
+            continue
+        tz_names = meta.get('tz_names', [])
+        if not tz_names:
+            continue
+        seg = df_all[df_all['tz'].isin(tz_names)].sort_values('route_hits', ascending=False)
+        for code in seg['iata']:
+            if _assign_to_bucket(code):
+                meta['codes'] = [code]
+                break
 
     # build ordered bucket list
     buckets_list = [
@@ -263,10 +303,13 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
 
     # 5) Build flat pool and offsets
     code_pool = []
+    seen_for_pool: set[str] = set()
     for b in buckets_list:
+        unique_codes = [c for c in b.get('codes', []) if c not in seen_for_pool]
         b['offset'] = len(code_pool)
-        b['count'] = len(b.get('codes', []))
-        code_pool.extend(b.get('codes', []))
+        b['count'] = len(unique_codes)
+        code_pool.extend(unique_codes)
+        seen_for_pool.update(unique_codes)
 
     # Build name pool parallel to code_pool
     name_pool = []

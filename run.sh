@@ -43,9 +43,11 @@ case "$COMMAND" in
         install_project
         ;;
     debug)
-        echo "Running debug (build and install)..."
+        echo "Running debug (build, install, and tail logs)..."
         build_project
         install_project
+        # Stream verbose emulator logs for live debugging
+        rebble logs --emulator basalt -v
         ;;
     *)
         echo "Usage: ./run.sh {generate|build|install|debug}"
