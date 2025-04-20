@@ -1,123 +1,11 @@
 # Requires Python 3.9+ for zoneinfo
 import zoneinfo
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
+from os import path
 # No unused imports found (time is used for .timestamp())
 
-# Helper to get offset and DST component safely
-def get_tz_details(tz_name: str, dt_utc: datetime) -> tuple[int, timedelta] | None:
-    """Gets total offset in seconds and DST component as timedelta."""
-    try:
-        tz = zoneinfo.ZoneInfo(tz_name)
-        offset_td = tz.utcoffset(dt_utc)
-        dst_td = tz.dst(dt_utc)
-
-        # Ensure DST is not None, default to zero if it is (e.g., for UTC)
-        if dst_td is None:
-            dst_td = timedelta(0)
-
-        if offset_td is not None:
-            return int(offset_td.total_seconds()), dst_td
-        # If offset_td is None, implicitly returns None below
-    except Exception:
-        # print(f"Warning: Could not get details for {tz_name} at {dt_utc}: {e}")
-        pass # Silently ignore errors for individual lookups
-    return None
-
-# Function to find DST transitions within a year
-@lru_cache(maxsize=None)
-def find_dst_transitions_accurate(tz_name: str, year: int) -> tuple[int, int, int, int]:
-    """ Finds precise DST transition UTC timestamps for a given year.
-        Returns (std_offset_sec, dst_offset_sec, last_start_utc_ts, last_end_utc_ts)
-        Timestamps are UTC seconds (epoch). 0 if no transition/no DST found in the year.
-    """
-    start_ts = 0
-    end_ts = 0
-    std_offset_sec = None
-    dst_offset_sec = None # Offset *during* DST
-    initial_offset_sec = None # Store the very first valid offset
-
-    try:
-        # Start iterating from one hour before the target year begins
-        # Ensures transitions exactly at year start are caught
-        current_dt = datetime(year , 1, 1, 0, 0, 0, tzinfo=timezone.utc) - timedelta(hours=1)
-        initial_details = get_tz_details(tz_name, current_dt)
-
-        if not initial_details:
-             # Fallback if start fails: try noon on Jan 1st
-             current_dt = datetime(year , 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-             initial_details = get_tz_details(tz_name, current_dt)
-             if not initial_details:
-                 print(f"Warning: Cannot get initial offset for {tz_name} in {year}")
-                 return 0, 0, 0, 0
-
-        prev_offset_sec, prev_dst_td = initial_details
-        initial_offset_sec = prev_offset_sec # Store the first offset we found
-
-        # Iterate hour by hour through the target year plus a few hours into the next
-        total_hours_to_check = (366 * 24) + 3 # Cover leap year + buffer
-
-        for _ in range(total_hours_to_check):
-            current_dt += timedelta(hours=1)
-            details = get_tz_details(tz_name, current_dt)
-
-            if not details: continue # Skip if data unavailable for this hour
-
-            current_offset_sec, current_dst_td = details
-
-            # --- Determine Standard vs DST offset ---
-            # Continuously update std/dst based on whether DST is active
-            if current_dst_td == timedelta(0):
-                std_offset_sec = current_offset_sec
-            if current_dst_td > timedelta(0):
-                dst_offset_sec = current_offset_sec
-
-            # --- Detect transition based on change in DST component ---
-            if prev_dst_td != current_dst_td:
-                transition_ts = int(current_dt.timestamp())
-
-                # Record transition timestamp if it happens *within* the target year
-                if current_dt.year == year:
-                    if prev_dst_td == timedelta(0) and current_dst_td > timedelta(0):
-                        # Entered DST (Std -> Dst)
-                        start_ts = transition_ts
-                        # Ensure offsets are recorded based on this transition
-                        if std_offset_sec is None: std_offset_sec = prev_offset_sec
-                        if dst_offset_sec is None: dst_offset_sec = current_offset_sec
-
-                    elif prev_dst_td > timedelta(0) and current_dst_td == timedelta(0):
-                        # Exited DST (Dst -> Std)
-                        end_ts = transition_ts
-                        # Ensure offsets are recorded based on this transition
-                        if std_offset_sec is None: std_offset_sec = current_offset_sec
-                        if dst_offset_sec is None: dst_offset_sec = prev_offset_sec
-
-            prev_offset_sec, prev_dst_td = current_offset_sec, current_dst_td
-
-        # --- Post-processing ---
-        # Use the very first offset seen if std/dst couldn't be determined otherwise
-        if std_offset_sec is None: std_offset_sec = initial_offset_sec
-        if dst_offset_sec is None: dst_offset_sec = std_offset_sec # Default DST offset to STD if not seen
-
-        # If offsets are effectively the same, clear transition timestamps
-        OFFSET_DIFF_THRESHOLD_SECONDS = 60 # Use a named constant
-        if abs(std_offset_sec - dst_offset_sec) < OFFSET_DIFF_THRESHOLD_SECONDS:
-             start_ts = 0
-             end_ts = 0
-             dst_offset_sec = std_offset_sec # Ensure they are identical if no DST
-
-    except zoneinfo.ZoneInfoNotFoundError:
-        print(f"Warning: Timezone '{tz_name}' not found during transition check.")
-        return 0, 0, 0, 0
-    except Exception as e:
-        print(f"Error finding transitions for {tz_name}: {e}")
-        return 0, 0, 0, 0
-
-    # Ensure we return non-None values
-    std_offset_sec = std_offset_sec if std_offset_sec is not None else 0
-    dst_offset_sec = dst_offset_sec if dst_offset_sec is not None else 0
-
-    return std_offset_sec, dst_offset_sec, start_ts, end_ts
+# Removed local caching and DST logic imports; using shared tz_common instead
+from tz_common import get_tz_details, find_dst_transitions as find_dst_transitions_accurate
 
 def generate_tz_list_c_code():
     """Generates C code for a static timezone list with DST transition timestamps."""
@@ -234,7 +122,7 @@ def generate_tz_list_c_code():
 # --- Main execution ---
 if __name__ == "__main__":
     c_code_output = generate_tz_list_c_code()
-    output_filename = "src/c/tz_list.c" # Output path
+    output_filename = path.join(path.dirname(__file__), "../src/c/tz_list.c")  # Default output path
     try:
         with open(output_filename, "w") as f:
             f.write(c_code_output)

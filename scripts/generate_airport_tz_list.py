@@ -29,88 +29,13 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple
-from functools import lru_cache
-
-import zoneinfo  # stdlib >=3.9
+from tz_common import get_tz_details as _get_tz_details, find_dst_transitions as _find_dst_transitions
 from bs4 import BeautifulSoup  # type: ignore
 import airportsdata  # pip install airportsdata
 import pandas as pd  # pip install pandas pyarrow
 import requests
 import io
 import gzip
-
-# ---------------------------------------------------------------------------
-# Helper functions (copied & trimmed from generate_tz_list.py)
-# ---------------------------------------------------------------------------
-
-def _get_tz_details(tz_name: str, dt_utc: datetime) -> Tuple[int, timedelta] | None:
-    """Return (total_offset_seconds, dst_component) or None if tz is invalid."""
-    try:
-        tz = zoneinfo.ZoneInfo(tz_name)
-        off = tz.utcoffset(dt_utc)
-        dst = tz.dst(dt_utc) or timedelta(0)
-        if off is not None:
-            return int(off.total_seconds()), dst
-    except Exception:
-        pass
-    return None
-
-@lru_cache(maxsize=None)
-def _find_dst_transitions(tz_name: str, year: int) -> Tuple[int, int, int, int]:
-    """Return (std_offset_s, dst_offset_s, dst_start_utc_ts, dst_end_utc_ts).
-
-    If the zone does not observe DST, std == dst and the transition timestamps
-    are 0.
-    """
-    std_offset_sec = None
-    dst_offset_sec = None
-    start_ts = 0
-    end_ts = 0
-
-    # Iterate hour by hour from [year-01-01 00:00-01h] through end of the year
-    current_dt = datetime(year, 1, 1, tzinfo=timezone.utc) - timedelta(hours=1)
-    initial = _get_tz_details(tz_name, current_dt)
-    if not initial:
-        return (0, 0, 0, 0)
-
-    prev_off, prev_dst = initial
-    total_hours = (366 * 24) + 3  # cover leap + buffer
-
-    for _ in range(total_hours):
-        current_dt += timedelta(hours=1)
-        details = _get_tz_details(tz_name, current_dt)
-        if not details:
-            continue
-        cur_off, cur_dst = details
-
-        # Track seen std/dst offsets
-        if cur_dst == timedelta(0):
-            std_offset_sec = cur_off
-        else:
-            dst_offset_sec = cur_off
-
-        # Detect transition when DST component toggles
-        if cur_dst != prev_dst:
-            ts = int(current_dt.timestamp())
-            if current_dt.year == year:
-                if prev_dst == timedelta(0) and cur_dst > timedelta(0):
-                    start_ts = ts
-                elif prev_dst > timedelta(0) and cur_dst == timedelta(0):
-                    end_ts = ts
-        prev_off, prev_dst = cur_off, cur_dst
-
-    if std_offset_sec is None:
-        std_offset_sec = prev_off
-    if dst_offset_sec is None:
-        dst_offset_sec = std_offset_sec
-
-    # If offsets differ by <1 min, treat as no DST.
-    if abs(std_offset_sec - dst_offset_sec) < 60:
-        start_ts = 0
-        end_ts = 0
-        dst_offset_sec = std_offset_sec
-
-    return (std_offset_sec, dst_offset_sec, start_ts, end_ts)
 
 # ---------------------------------------------------------------------------
 # Build ranked list of airports with route counts (fallback if HTML omitted)
@@ -427,7 +352,13 @@ def main(argv: List[str] | None = None) -> None:
         default=Path("top1000.html"),
         help="Path to GetToCenter HTML file (top1000.html)",
     )
-    parser.add_argument("--out", type=Path, default=Path("src/c/airport_tz_list.c"), help="C output file path")
+    default_out_path = Path(__file__).parent / "../src/c/airport_tz_list.c"
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=default_out_path,
+        help="C output file path"
+    )
     parser.add_argument(
         "--top",
         type=int,

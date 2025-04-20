@@ -6,8 +6,8 @@ set -e
 # Function to run the timezone generation script
 generate_tz_list() {
     echo "Generating timezone lists..."
-    uv run python generate_tz_list.py
-    uv run python generate_airport_tz_list.py
+    uv run python scripts/generate_tz_list.py
+    uv run python scripts/generate_airport_tz_list.py
 }
 
 # Function to build the project
