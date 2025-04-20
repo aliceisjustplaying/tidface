@@ -1,7 +1,11 @@
+![screenshot](screenshot.png)
+
 # TID clock (and other watchfaces for pebble)
 
-Use [rebbletool](https://github.com/richinfante/rebbletool) to build and install on your Pebble or in an emulator on a modern computer.
-
+## Prerequisites
+- [rebbletool](https://github.com/richinfante/rebbletool)
+- Python 3
+- [uv](https://github.com/astral-sh/uv?tab=readme-ov-file#installation)
 ## Overview
 
 TID clock is a Pebble watchface that displays:
@@ -43,17 +47,4 @@ Use the included `run.sh` helper script to streamline common tasks:
 
 # 4) Build and install in one step
 ./run.sh debug
-```
-
-Or run each step manually:
-
-```bash
-# Generate the airport timezone list
-python3 generate_airport_tz_list.py --top 10 --max-bucket 10 --out src/c/airport_tz_list.c
-
-# Build using Rebbletool
-rebble build
-
-# Install to device or emulator
-rebble install --emulator basalt
 ```
