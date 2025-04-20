@@ -1,11 +1,9 @@
 # Requires Python 3.9+ for zoneinfo
 import zoneinfo
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from os import path
-# No unused imports found (time is used for .timestamp())
-
-# Removed local caching and DST logic imports; using shared tz_common instead
-from tz_common import get_tz_details, find_dst_transitions as find_dst_transitions_accurate
+# Use shared DST tools
+from tz_common import find_dst_transitions as find_dst_transitions_accurate
 
 def generate_tz_list_c_code():
     """Generates C code for a static timezone list with DST transition timestamps."""

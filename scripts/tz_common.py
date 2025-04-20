@@ -1,6 +1,5 @@
 # tz_common.py
 """Common timezone utilities shared by both generators."""
-from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import zoneinfo
 from functools import lru_cache

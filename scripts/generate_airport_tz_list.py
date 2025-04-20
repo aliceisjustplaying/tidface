@@ -14,28 +14,19 @@
 
 Usage:
     # Always parse HTML top1000.html, then fallback for missing offsets
-    python generate_airport_tz_list.py --html top1000.html --out src/c/airport_tz_list.c --top 10 --max-bucket 3
-
-Dependencies:
-    pip install airportsdata beautifulsoup4 pandas requests
-
-This script intentionally re-implements the DST-transition detection logic from
-`generate_tz_list.py` so it can remain self-contained.
+    python generate_airport_tz_list.py --html top1000.html --out src/c/airport_tz_list.c --top 10 --max-bucket 1000
 """
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Dict, List, Tuple
-from tz_common import get_tz_details as _get_tz_details, find_dst_transitions as _find_dst_transitions
+from tz_common import find_dst_transitions as _find_dst_transitions
 from bs4 import BeautifulSoup  # type: ignore
-import airportsdata  # pip install airportsdata
-import pandas as pd  # pip install pandas pyarrow
-import requests
-import io
-import gzip
+import airportsdata
+import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Build ranked list of airports with route counts (fallback if HTML omitted)
@@ -346,12 +337,15 @@ def main(argv: List[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Generate airport_tz_list.c: hybrid grouping by standard offset, split DST buckets, fallback for missing offsets"
     )
+
+    default_html_path = Path(__file__).parent / "top1000.html"
     parser.add_argument(
         "--html",
         type=Path,
-        default=Path("top1000.html"),
+        default=default_html_path,
         help="Path to GetToCenter HTML file (top1000.html)",
     )
+
     default_out_path = Path(__file__).parent / "../src/c/airport_tz_list.c"
     parser.add_argument(
         "--out",
