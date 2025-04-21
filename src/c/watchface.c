@@ -39,7 +39,7 @@ static void main_window_load(Window *window) {
   int footer_h = 48;
   int hero_h = bounds.size.h - footer_h;
   const int city_h = 28;
-  const int name_h = 22;  // height for airport name (increased to fit descenders)
+  const int name_h = 28;  // height for airport name (increased to fit descenders)
   const int usable_h = hero_h - city_h - name_h;
   const int time_font_h = 42;
   // Create city name line
@@ -47,8 +47,8 @@ static void main_window_load(Window *window) {
       GRect(0, 0, bounds.size.w, city_h), window_layer);
   text_layer_set_text_alignment(s_airport_noon_code_layer, GTextAlignmentCenter);
   // Create airport name line below the IATA code
-  s_airport_noon_name_layer = text_layer_create(GRect(0, city_h, bounds.size.w, name_h));
-  text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_airport_noon_name_layer = text_layer_create(GRect(4, name_h, bounds.size.w - 4, name_h));
+  text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
   // Create hero time line, vertically centered
@@ -61,17 +61,17 @@ static void main_window_load(Window *window) {
   int h = bounds.size.h;
   int footer_y = h - footer_h;
   // Two line heights to fit fonts without clipping
-  int tid_h = 26;   // tall enough for 18px font + padding
+  int tid_h = 28;   // tall enough for 18px font + padding
   int beat_h = footer_h - tid_h;
 
   // Footer line 1: TID (bigger, center aligned)
-  s_tid_layer = clock_tid_init(GRect(0, footer_y, w, tid_h), window_layer);
-  text_layer_set_font(s_tid_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+  s_tid_layer = clock_tid_init(GRect(0, footer_y - 1, w, tid_h), window_layer);
+  text_layer_set_font(s_tid_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   text_layer_set_text_alignment(s_tid_layer, GTextAlignmentCenter);
 
   // Footer line 2: Beat (smaller, center aligned)
-  s_beat_layer = clock_beat_init(GRect(0, footer_y + tid_h, w, beat_h), window_layer);
-  text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  s_beat_layer = clock_beat_init(GRect(0, footer_y + tid_h - 3, w, beat_h), window_layer);
+  text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
   text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
 }
 
