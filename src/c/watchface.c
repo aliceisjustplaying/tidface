@@ -47,7 +47,7 @@ static void main_window_load(Window *window) {
       GRect(0, 0, bounds.size.w, city_h), window_layer);
   text_layer_set_text_alignment(s_airport_noon_code_layer, GTextAlignmentCenter);
   // Create airport name line below the IATA code
-  s_airport_noon_name_layer = text_layer_create(GRect(4, name_h, bounds.size.w - 4, name_h));
+  s_airport_noon_name_layer = text_layer_create(GRect(3, name_h, bounds.size.w - 5, name_h));
   text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
