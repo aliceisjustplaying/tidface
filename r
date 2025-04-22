@@ -28,9 +28,15 @@ wipe() {
     rebble wipe
 }
 
+# Function to push the project to the Pebble
+push() {
+    echo "Pushing project to Pebble..."
+    rebble install --phone "$1"
+}
+
 # Parse the command line argument
 COMMAND=$1
-USAGE="Usage: ./r {generate|build|install|debug|wipe}"
+USAGE="Usage: ./r {generate|build|install|debug|wipe|push}"
 
 # Check if a command was provided
 if [ -z "$COMMAND" ]; then
@@ -58,6 +64,14 @@ case "$COMMAND" in
         install
         # Stream verbose emulator logs for live debugging
         rebble logs --emulator basalt -v
+        ;;
+    push)
+        if [ -z "$2" ]; then
+            echo "Error: Phone argument required for push command"
+            echo "Usage: ./r push <phone-ip>"
+            exit 1
+        fi
+        push "$2"
         ;;
     *)
         echo "$USAGE"
