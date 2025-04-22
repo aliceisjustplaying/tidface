@@ -11,23 +11,30 @@ generate_tz_list() {
 }
 
 # Function to build the project
-build_project() {
+build() {
     echo "Building project..."
     rebble build
 }
 
 # Function to install the project on the emulator
-install_project() {
+install() {
     echo "Installing project on emulator..."
     rebble install --emulator basalt
 }
 
+# Function to wipe the emulator
+wipe() {
+    echo "Wiping emulator..."
+    rebble wipe
+}
+
 # Parse the command line argument
 COMMAND=$1
+USAGE="Usage: ./r {generate|build|install|debug|wipe}"
 
 # Check if a command was provided
 if [ -z "$COMMAND" ]; then
-    echo "Usage: ./run.sh {generate|build|install|debug}"
+    echo "$USAGE"
     exit 1
 fi
 
@@ -36,21 +43,24 @@ case "$COMMAND" in
     generate)
         generate_tz_list
         ;;
+    wipe)
+        wipe
+        ;;
     build)
-        build_project
+        build
         ;;
     install)
-        install_project
+        install
         ;;
     debug)
-        echo "Running debug (build, install, and tail logs)..."
-        build_project
-        install_project
+        wipe
+        build
+        install
         # Stream verbose emulator logs for live debugging
         rebble logs --emulator basalt -v
         ;;
     *)
-        echo "Usage: ./run.sh {generate|build|install|debug}"
+        echo "$USAGE"
         exit 1
         ;;
 esac

@@ -33,18 +33,18 @@ uv pip install -r requirements.txt
 
 ## Build & Installation
 
-Use the included `run.sh` helper script to streamline common tasks:
+Use the included `r` helper script to streamline common tasks:
 
 ```bash
 # 1) Generate timezone and airport data
-./run.sh generate
+./r generate
 
 # 2) Build the project
-./run.sh build
+./r build
 
 # 3) Install onto the emulator (Basalt)
-./run.sh install
+./r install
 
 # 4) Build and install in one step
-./run.sh debug
+./r debug
 ```
