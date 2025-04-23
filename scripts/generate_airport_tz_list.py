@@ -333,10 +333,16 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
         f.write(f"// Year-specific DST data for {year}\n\n")
         f.write("#include <stdint.h>\n\n")
         # Code pool
-        f.write("static const char* airport_code_pool[] = {\n")
-        for code in code_pool:
-            f.write(f"    \"{code}\",\n")
-        f.write("};\n\n")
+        f.write("static const char airport_code_pool[] =\n")
+        for i, code in enumerate(code_pool):
+            if i % 8 == 0:
+                f.write("    ") # Indent new line
+            f.write(f'"{code}"')
+            if (i + 1) % 8 == 0 or (i + 1) == len(code_pool):
+                f.write("\n") # Newline every 8 codes or at the end
+            else:
+                f.write(" ") # Space between codes on the same line
+        f.write(";\n\n")
 
         # Name pool
         f.write("static const char* airport_name_pool[] = {\n")
@@ -365,7 +371,7 @@ def generate_c_code(airports_list: List[Tuple[str, str]], out_path: Path, group_
             f.write(f"    {{ {std_h:.2f}f, {dst_h:.2f}f, {start}LL, {end}LL, {off}, {cnt} }},\n")
         f.write("};\n\n")
         f.write("#define AIRPORT_TZ_LIST_COUNT (sizeof(airport_tz_list)/sizeof(airport_tz_list[0]))\n")
-        f.write("#define AIRPORT_CODE_POOL_COUNT (sizeof(airport_code_pool)/sizeof(airport_code_pool[0]))\n")
+        f.write("#define AIRPORT_CODE_POOL_COUNT (sizeof(airport_code_pool)/3)\n")
         f.write("#define AIRPORT_NAME_POOL_COUNT (sizeof(airport_name_pool)/sizeof(airport_name_pool[0]))\n")
 
     print(
