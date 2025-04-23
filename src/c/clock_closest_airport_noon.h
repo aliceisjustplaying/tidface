@@ -69,10 +69,10 @@ static inline void       clock_closest_airport_noon_update(TextLayer *code_layer
 #define DAY_SECONDS   (24 * 3600L)
 #define NOON_SECONDS  (12 * 3600L)
 
-static char  s_airport_noon_buffer[40];    // code + MM:SS
+// static char  s_airport_noon_buffer[40];    // code + MM:SS
 static time_t s_last_update_time        = -1;
 static time_t s_last_re_eval_time       = -1;
-static const char *s_selected_code      = "---";  // IATA placeholder
+static char s_selected_code[4]          = "---";  // IATA placeholder
 static const char *s_selected_name      = "---";  // Airport name placeholder
 static float s_selected_offset_hours    = 0.0f;
 
@@ -116,7 +116,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
 
     // 2. Pick a random candidate, then a random airport code from that bucket
     if (best_count == 0) {
-        s_selected_code = "---";
+        memcpy((void *)s_selected_code, "---", 3);
+        s_selected_code[3] = '\0'; // Ensure null termination
         s_selected_name = "---";
         s_selected_offset_hours = 0.0f;
     } else {
@@ -126,7 +127,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
         s_selected_offset_hours = is_dst ? tz->dst_offset_hours : tz->std_offset_hours;
         int cnt = tz->name_count;
         int ni  = (cnt == 1) ? 0 : (rand() % cnt);
-        s_selected_code = CODE_POOL[tz->name_offset + ni];
+        memcpy((void *)s_selected_code, CODE_POOL + 3 * (tz->name_offset + ni), 3);
+        s_selected_code[3] = '\0'; // Ensure null termination
         s_selected_name = NAME_POOL[tz->name_offset + ni];
     }
     s_last_re_eval_time = current_utc_t;
@@ -136,7 +138,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
 static inline TextLayer* clock_closest_airport_noon_code_init(GRect bounds,
                                                               Layer *window_layer) {
     TextLayer* layer = text_layer_util_create(bounds, window_layer, "---", FONT_KEY_GOTHIC_28_BOLD);
-    s_selected_code = "---";
+    memcpy((void *)s_selected_code, "---", 3);
+    s_selected_code[3] = '\0'; // Ensure null termination
     s_selected_name = "---";
     s_last_update_time = -1;
     s_last_re_eval_time = -1;
@@ -182,7 +185,7 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
     }
 
     // Update text layers ---------------------------------------------------
-    text_layer_set_text(code_layer, s_selected_code ? s_selected_code : "ERR");
+    text_layer_set_text(code_layer, s_selected_code);
 
     long offset_seconds = (long)(s_selected_offset_hours * 3600.0f);
     time_t local_epoch = current_utc_t + offset_seconds;
