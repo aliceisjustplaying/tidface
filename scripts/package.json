@@ -10,13 +10,15 @@
   },
   "dependencies": {
     "@types/commander": "^2.12.5",
-    "@vvo/tzdb": "^6",
+    "@vvo/tzdb": "^6.161.0",
     "airport-data": "^1.0.1",
     "cheerio": "^1",
     "commander": "^13.1.0",
     "csv-parse": "^5",
     "geo-tz": "^8",
-    "luxon": "^3"
+    "luxon": "^3",
+    "timezonecomplete": "^5.13.1",
+    "tzdata": "^1.0.44"
   },
   "devDependencies": {
     "typescript": "^5",

@@ -5,13 +5,15 @@
       "name": "tidface-scripts",
       "dependencies": {
         "@types/commander": "^2.12.5",
-        "@vvo/tzdb": "^6",
+        "@vvo/tzdb": "^6.161.0",
         "airport-data": "^1.0.1",
         "cheerio": "^1",
         "commander": "^13.1.0",
         "csv-parse": "^5",
         "geo-tz": "^8",
         "luxon": "^3",
+        "timezonecomplete": "^5.13.1",
+        "tzdata": "^1.0.44",
       },
       "devDependencies": {
         "@types/jest": "^29",
@@ -641,6 +643,8 @@
 
     "text-encoding": ["text-encoding@0.6.4", "", {}, "sha512-hJnc6Qg3dWoOMkqP53F0dzRIgtmsAge09kxUIqGrEUS4qr5rWLckGYaQAVr+opBrIMRErGgy6f5aPnyPpyGRfg=="],
 
+    "timezonecomplete": ["timezonecomplete@5.13.1", "", { "dependencies": { "tzdata": "1.0.25" } }, "sha512-41o3TTExXQ03jQML12Tk64b5TYeEy968Umq5vya+08sFWCcYw5fNqrHubD1vj/JGN1NYhFFBCS09rOL3b7nM2w=="],
+
     "tmpl": ["tmpl@1.0.5", "", {}, "sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw=="],
 
     "to-regex-range": ["to-regex-range@5.0.1", "", { "dependencies": { "is-number": "^7.0.0" } }, "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ=="],
@@ -658,6 +662,8 @@
     "typedarray": ["typedarray@0.0.6", "", {}, "sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA=="],
 
     "typescript": ["typescript@5.8.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ=="],
+
+    "tzdata": ["tzdata@1.0.44", "", {}, "sha512-xJ8xcdoFRwFpIQ90QV3WFXJNCO/feNn9vHVsZMJiKmtMYuo7nvF6CTpBc+SgegC1fb/3L+m32ytXT9XrBjrINg=="],
 
     "undici": ["undici@6.21.2", "", {}, "sha512-uROZWze0R0itiAKVPsYhFov9LxrPMHLMEQFszeI2gCN6bnIIZ8twzBCJcN2LJrBBLfrP0t1FW0g+JmKVl8Vk1g=="],
 
@@ -720,6 +726,8 @@
     "parse5/entities": ["entities@6.0.0", "", {}, "sha512-aKstq2TDOndCn4diEyp9Uq/Flu2i1GlLkc6XIDQSDMuaFE3OPW5OphLCyQ5SpSJZTb4reN+kTcYru5yIfXoRPw=="],
 
     "shapefile/commander": ["commander@2.20.3", "", {}, "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ=="],
+
+    "timezonecomplete/tzdata": ["tzdata@1.0.25", "", {}, "sha512-yAZ/Tv/tBFIPHJGYrOexxW8Swyjszt7rDhIjnIPSqLaP8mzrr3T7D0w4cxQBtToXnQrlFqkEU0stGC/auz0JcQ=="],
 
     "wrap-ansi/ansi-styles": ["ansi-styles@4.3.0", "", { "dependencies": { "color-convert": "^2.0.1" } }, "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg=="],
 
