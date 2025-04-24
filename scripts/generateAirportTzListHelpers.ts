@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as cheerio from 'cheerio';
 import { find as findTz } from 'geo-tz';
-import { parse } from 'csv-parse';
+import { parse as parseSync } from 'csv-parse/sync';
 import { findDstTransitions, DstTransitions } from './tzCommon';
 
 // ---------------------------------------------------------------------------
@@ -132,30 +132,22 @@ export async function downloadRoutesCsv(): Promise<RouteRecord[]> {
         if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
         const text = await response.text();
         console.log('Routes data downloaded, parsing...');
-        const records: RouteRecord[] = [];
-        const parser = parse({ delimiter: ',', columns: false, skip_empty_lines: true, trim: true });
-        parser.on('readable', () => {
-            let record;
-            while ((record = parser.read()) !== null) {
-                const srcIata = record[2];
-                const dstIata = record[4];
-                if (
-                    srcIata?.length === 3 && /^[A-Z]+$/.test(srcIata) &&
-                    dstIata?.length === 3 && /^[A-Z]+$/.test(dstIata)
-                ) {
-                    records.push([srcIata, dstIata]);
-                }
+        // Parse CSV synchronously to avoid lingering parser handles
+        const rawRecords = parseSync(text, { delimiter: ',', columns: false, skip_empty_lines: true, trim: true }) as string[][];
+        // Build RouteRecord[] explicitly to satisfy tuple typing
+        const records = rawRecords.reduce<RouteRecord[]>((acc, record) => {
+            const srcIata = record[2];
+            const dstIata = record[4];
+            if (
+                srcIata.length === 3 && /^[A-Z]+$/.test(srcIata) &&
+                dstIata.length === 3 && /^[A-Z]+$/.test(dstIata)
+            ) {
+                acc.push([srcIata, dstIata]);
             }
-        });
-        parser.on('error', err => console.error('CSV Parsing Error:', err.message));
-        return new Promise(resolve => {
-            parser.on('end', () => {
-                console.log(`Finished parsing routes. Found ${records.length} valid routes.`);
-                resolve(records);
-            });
-            parser.write(text);
-            parser.end();
-        });
+            return acc;
+        }, []);
+        console.log(`Finished parsing routes. Found ${records.length} valid routes.`);
+        return records;
     } catch (error) {
         console.error('Error downloading or parsing routes data:', error);
         throw error;
@@ -187,27 +179,18 @@ export async function downloadOurAirportsCsv(): Promise<Map<string, OurAirportIn
         if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
         const text = await response.text();
         console.log('OurAirports data downloaded, parsing...');
-        const parser = parse({ delimiter: ',', columns: true, skip_empty_lines: true, trim: true });
-        parser.on('readable', () => {
-            let record;
-            while ((record = parser.read()) !== null) {
-                const iata = record.iata_code;
-                const type = record.type;
-                const scheduled = record.scheduled_service;
-                if (iata?.length === 3 && /^[A-Z0-9]+$/.test(iata)) {
-                    ourAirportsMap.set(iata.toUpperCase(), { iata: iata.toUpperCase(), type: type || '', scheduled_service: scheduled || '' });
-                }
+        // Parse CSV synchronously to avoid lingering parser handles
+        const rawRecords: Array<Record<string, string>> = parseSync(text, { delimiter: ',', columns: true, skip_empty_lines: true, trim: true });
+        rawRecords.forEach((record: any) => {
+            const iata = record.iata_code;
+            const type = record.type;
+            const scheduled = record.scheduled_service;
+            if (iata?.length === 3 && /^[A-Z0-9]+$/.test(iata)) {
+                ourAirportsMap.set(iata.toUpperCase(), { iata: iata.toUpperCase(), type: type || '', scheduled_service: scheduled || '' });
             }
         });
-        parser.on('error', err => console.error('OurAirports CSV Parsing Error:', err.message));
-        return new Promise(resolve => {
-            parser.on('end', () => {
-                console.log(`Finished parsing OurAirports. Found ${ourAirportsMap.size} airports with IATA.`);
-                resolve(ourAirportsMap);
-            });
-            parser.write(text);
-            parser.end();
-        });
+        console.log(`Finished parsing OurAirports. Found ${ourAirportsMap.size} airports with IATA.`);
+        return ourAirportsMap;
     } catch (error) {
         console.error('Error downloading or parsing OurAirports data:', error);
         console.warn('Proceeding without OurAirports classification data.');

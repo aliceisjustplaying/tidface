@@ -6,12 +6,13 @@ module.exports = {
   moduleFileExtensions: ["ts", "js", "json", "node"],
   // Transform TypeScript files using ts-jest
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        diagnostics: false,
+      },
+    ],
   },
-  // Silence verbose warnings from ts-jest about diagnostics for faster runs
-  globals: {
-    "ts-jest": {
-      diagnostics: false,
-    },
-  },
+  // Enable detectOpenHandles to report and close any lingering handles
+  detectOpenHandles: true,
 };
