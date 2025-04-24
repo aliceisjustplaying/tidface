@@ -72,4 +72,33 @@ def find_dst_transitions(tz_name: str, year: int) -> tuple[int, int, int, int]:
         end_ts = 0
         dst_offset_sec = std_offset_sec
 
-    return std_offset_sec, dst_offset_sec, start_ts, end_ts 
+    return std_offset_sec, dst_offset_sec, start_ts, end_ts
+
+# --- Main execution (for CLI testing) ---
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 3:
+        print("Usage: python tz_common.py <timezone_name> <year>", file=sys.stderr)
+        sys.exit(1)
+
+    tz_name_arg = sys.argv[1]
+    try:
+        year_arg = int(sys.argv[2])
+    except ValueError:
+        print(f"Error: Invalid year '{sys.argv[2]}'", file=sys.stderr)
+        sys.exit(1)
+
+    # Ensure zoneinfo is available if needed by get_tz_details
+    try:
+        import zoneinfo
+    except ImportError:
+        print("Error: Python 3.9+ with zoneinfo is required to run this script directly.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        result = find_dst_transitions(tz_name_arg, year_arg)
+        # Print tuple directly for easy parsing
+        print(result)
+    except Exception as e:
+        print(f"Error processing {tz_name_arg} for {year_arg}: {e}", file=sys.stderr)
+        sys.exit(1) 

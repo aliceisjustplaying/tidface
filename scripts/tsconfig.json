@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "outDir": "dist",          // Output JS within scripts/dist
+    "rootDir": ".",             // Root is the scripts directory
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",             // Helps with potential pathing issues
+    "paths": {
+      "*": ["node_modules/*", "types/*"] // Look in local node_modules and types
+    }
+  },
+  "include": ["./**/*.ts"],    // Include all .ts files within scripts/
+  "exclude": ["node_modules", "dist"]
+} 

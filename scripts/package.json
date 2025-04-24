@@ -1,0 +1,30 @@
+{
+  "name": "tidface-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts for generating C code for tidface",
+  "scripts": {
+    "generate:tz": "ts-node generateTzList.ts",
+    "generate:airport": "ts-node generateAirportTzList.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@types/commander": "^2.12.5",
+    "@vvo/tzdb": "^6",
+    "airport-data": "^1.0.1",
+    "cheerio": "^1",
+    "commander": "^13.1.0",
+    "csv-parse": "^5",
+    "geo-tz": "^8",
+    "luxon": "^3"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "ts-node": "^10",
+    "@types/node": "^22",
+    "@types/luxon": "^3",
+    "jest": "^29",
+    "ts-jest": "^29",
+    "@types/jest": "^29"
+  }
+}
