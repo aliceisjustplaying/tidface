@@ -53,6 +53,16 @@
 extern "C" {
 #endif
 
+// Helper to fetch the Nth null-terminated name from the flat pool
+static inline const char* _airport_flat_name(const char* pool, int nameIndex) {
+    const char* p = pool;
+    while (nameIndex-- > 0) {
+        while (*p) p++; // skip current string
+        p++;            // move past '\0'
+    }
+    return p;
+}
+
 // Public API ---------------------------------------------------------------
 
 static inline TextLayer* clock_closest_airport_noon_code_init(GRect bounds,
@@ -129,7 +139,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
         int ni  = (cnt == 1) ? 0 : (rand() % cnt);
         memcpy((void *)s_selected_code, CODE_POOL + 3 * (tz->name_offset + ni), 3);
         s_selected_code[3] = '\0'; // Ensure null termination
-        s_selected_name = NAME_POOL[tz->name_offset + ni];
+        int nameIndex = tz->name_offset + ni;
+        s_selected_name = _airport_flat_name(NAME_POOL, nameIndex);
     }
     s_last_re_eval_time = current_utc_t;
 }
@@ -204,4 +215,6 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
 }
 #endif
 
-#endif /* CLOCK_CLOSEST_AIRPORT_NOON_H */ 
+#endif /* CLOCK_CLOSEST_AIRPORT_NOON_H */
+
+// Note: using airport_name_offsets[] directly for name lookup

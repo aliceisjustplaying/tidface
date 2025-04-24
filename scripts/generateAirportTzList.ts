@@ -418,7 +418,7 @@ async function generateCCode(
 
     const codePool: string[] = [];
     const namePool: string[] = [];
-    const poolCodeSet = new Set<string>(); // Track codes added to pool
+    const poolCodeSet = new Set<string>(); // Track codes/names added to pool
 
     // Calculate final offsets and counts
     for (const bucket of sortedBuckets) {
@@ -444,7 +444,7 @@ async function generateCCode(
             } else if (name.endsWith(' Airport')) {
                 name = name.substring(0, name.length - ' Airport'.length);
             }
-            namePool.push(name.trim().replace(/\"/g, '\\"')); // Escape quotes for C string
+            namePool.push(name.trim().replace(/\"/g, '\\\"')); // Escape quotes for C string
         }
     }
 
@@ -477,15 +477,26 @@ async function generateCCode(
 
     // Airport Name Pool (pointers to strings)
     cContent += `// Total airport names: ${namePool.length}\n`;
-    cContent += `static const char* airport_name_pool[] = {\n`;
+    cContent += `static const char airport_name_pool[] =\n`;
     if (namePool.length > 0) {
+        let line = '    ';
         for (const name of namePool) {
-            cContent += `    "${name}",\n`;
+            const literal = `"${name}\\0"`;
+            // Break line if too long
+            if (line.length + literal.length + 1 > 80) {
+                cContent += `${line}\n`;
+                line = '    ' + literal + ' ';
+            } else {
+                line += literal + ' ';
+            }
         }
+        if (line.trim().length > 0) {
+            cContent += `${line.trimEnd()}\n`;
+        }
+        cContent += `;\n\n`;
     } else {
-         cContent += `    // Empty pool\n`;
+        cContent += `    "\0"; // Empty pool\n\n`;
     }
-    cContent += `};\n\n`;
 
     // TzInfo struct definition
     cContent += `typedef struct {\n`;
