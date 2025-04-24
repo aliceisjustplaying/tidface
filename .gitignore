@@ -1,5 +1,4 @@
 build/
 .lock*
 .clangd
-__pycache__
 node_modules
