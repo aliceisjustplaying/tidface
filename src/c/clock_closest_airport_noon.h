@@ -74,12 +74,12 @@ static inline TextLayer* clock_closest_airport_noon_time_init(GRect bounds,
 static inline void       clock_closest_airport_noon_deinit(TextLayer *layer);
 static inline void       clock_closest_airport_noon_update(TextLayer *code_layer,
                                                            TextLayer *time_layer,
-                                                           time_t     current_utc_t);
+                                                           time_t     current_utc_t,
+                                                           long       target_seconds_of_day);
 // -------------------------------------------------------------------------
 
 // Internal constants / storage --------------------------------------------
 #define DAY_SECONDS   (24 * 3600L)
-#define NOON_SECONDS  (12 * 3600L)
 
 // static char  s_airport_noon_buffer[40];    // code + MM:SS
 static time_t s_last_update_time        = -1;
@@ -98,7 +98,7 @@ static inline bool _airport_is_dst(const TzInfo *tz, int64_t now_utc) {
   return (now_utc >= tz->dst_start_utc || now_utc < tz->dst_end_utc);
 }
 
-static inline void _airport_pick_new(time_t current_utc_t) {
+static inline void _airport_pick_new(time_t current_utc_t, long target_seconds_of_day) {
     srand((unsigned int)current_utc_t);  // stable randomness per eval moment
 
     uint32_t utc_secs = current_utc_t % DAY_SECONDS;
@@ -116,8 +116,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
         long local_secs = (long)utc_secs + (long)(offset_h * 3600.0f);
         local_secs %= DAY_SECONDS;
         if (local_secs < 0) local_secs += DAY_SECONDS;
-        if (local_secs < NOON_SECONDS) continue;   // hasn't reached noon yet
-        long delta = local_secs - NOON_SECONDS;
+        if (local_secs < target_seconds_of_day) continue;   // hasn't reached target time yet
+        long delta = local_secs - target_seconds_of_day;
         if (delta < best_delta) {
             best_delta = delta;
             best_count = 0;
@@ -179,7 +179,8 @@ static inline void clock_closest_airport_noon_deinit(TextLayer *layer) {
 
 static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
                                                      TextLayer *time_layer,
-                                                     time_t     current_utc_t) {
+                                                     time_t     current_utc_t,
+                                                     long       target_seconds_of_day) {
     if (!code_layer || !time_layer) return;
 
     // Skip redundant updates in the same second
@@ -199,7 +200,7 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
     }
 
     if (needs_eval) {
-        _airport_pick_new(current_utc_t);
+        _airport_pick_new(current_utc_t, target_seconds_of_day);
     }
 
     // Update text layers ---------------------------------------------------

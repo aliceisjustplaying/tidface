@@ -2,9 +2,13 @@
   "name": "tidface",
   "author": "aliceisjustplaying",
   "version": "1.0.0",
-  "keywords": ["pebble-app"],
+  "keywords": [
+    "pebble-app"
+  ],
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
+  },
   "pebble": {
     "displayName": "tidface",
     "uuid": "d3486974-f487-4d30-b67f-9143c3ce7ab3",
@@ -20,7 +24,7 @@
       "watchface": true
     },
     "messageKeys": [
-      "dummy"
+      "timeAlignmentMode"
     ],
     "resources": {
       "media": []

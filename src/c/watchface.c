@@ -8,6 +8,20 @@
 #include "clock_tid.h"
 // #include "clock_decimal.h"
 
+// --- Clock Modules & Settings ---
+#define SETTINGS_KEY 1
+
+typedef enum {
+  MODE_NOON = 0,
+  MODE_5PM = 1
+} TargetTimeMode;
+
+typedef struct AppSettings {
+  TargetTimeMode target_time_mode;
+} AppSettings;
+
+static AppSettings settings;
+
 // --- Window and Layer Globals ---
 static Window *s_main_window;
 static TextLayer *s_airport_noon_code_layer;
@@ -18,13 +32,56 @@ static TextLayer *s_beat_layer;
 
 // --- Pebble Window Management ---
 
+// --- Settings Load/Save/Receive ---
+static void load_settings() {
+  // Set default values
+  settings.target_time_mode = MODE_NOON;
+  // Read settings from persistent storage, if they exist
+  persist_read_data(SETTINGS_KEY, &settings, sizeof(settings));
+}
+
+static void save_settings() {
+  persist_write_data(SETTINGS_KEY, &settings, sizeof(settings));
+}
+
+static void inbox_received_handler(DictionaryIterator *iter, void *context) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "Inbox received!");
+  // Read timeAlignmentMode preference
+  Tuple *target_time_mode_t = dict_find(iter, MESSAGE_KEY_timeAlignmentMode);
+  if (target_time_mode_t) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Found key timeAlignmentMode with value %d", (int)target_time_mode_t->value->int32);
+    // Convert received ASCII value ('0' or '1') to enum
+    int received_value = (int)target_time_mode_t->value->int32;
+    if (received_value == 49) { // ASCII for '1'
+      settings.target_time_mode = MODE_5PM;
+    } else { // Default to Noon for '0' (ASCII 48) or unexpected values
+      settings.target_time_mode = MODE_NOON;
+    }
+    APP_LOG(APP_LOG_LEVEL_INFO, "Setting mode to: %d", settings.target_time_mode);
+  } else {
+    APP_LOG(APP_LOG_LEVEL_WARNING, "Key timeAlignmentMode not found!");
+  }
+
+  // Save the new settings
+  save_settings();
+
+  // Potentially force an update if needed (e.g., re-pick airport)
+  s_last_re_eval_time = -1; // Force re-evaluation on next tick
+}
+
 // Handles updates from the TickTimerService
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   time_t seconds;
   uint16_t milliseconds;
   time_ms(&seconds, &milliseconds);
+
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Tick! Current mode: %d", settings.target_time_mode);
+  // Determine target seconds based on setting
+  long target_seconds = (settings.target_time_mode == MODE_5PM) ? (17 * 3600L) : (12 * 3600L);
+
   // Hero: Closest Noon (update city and time layers)
-  clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds);
+  clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds, target_seconds);
+
   // Update airport name below the code
   text_layer_set_text(s_airport_noon_name_layer, s_selected_name);
   // Footer: TID (larger) and Beat (smaller)
@@ -87,6 +144,9 @@ static void main_window_unload(Window *window) {
 static void init() {
   srand(time(NULL));
 
+  // Load settings
+  load_settings();
+
   // Create main Window element and assign to pointer
   s_main_window = window_create();
   // Ensure text layers with clear background show up on white
@@ -103,12 +163,22 @@ static void init() {
   // Get initial time and update display immediately
   time_t seconds;
   uint16_t milliseconds;
-  time_ms(&seconds, &milliseconds); // Call only once
-  // Initial updates can be skipped if layers show placeholders,
-  // tick_handler will update them shortly after load.
+  time_ms(&seconds, &milliseconds); 
+  // Perform initial update after loading settings
+  tick_handler(NULL, SECOND_UNIT); // Pass NULL tick_time as it's not used by our handler logic
 
   // Register with TickTimerService to update every second
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+
+  // Register AppMessage handlers
+  app_message_register_inbox_received(inbox_received_handler);
+  // Open AppMessage with default inbox size from Clay docs
+  AppMessageResult result = app_message_open(128, 0); // 128 inbox, 0 outbox (adjust if needed)
+  if (result == APP_MSG_OK) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "AppMessage opened successfully!");
+  } else {
+      APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to open AppMessage: %d", result);
+  }
 }
 
 static void deinit() {

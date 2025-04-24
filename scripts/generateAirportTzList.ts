@@ -465,7 +465,7 @@ async function generateCCode(
         const b2 = code.charCodeAt(2) - 65;
         const bits = (b0 << 10) | (b1 << 5) | b2;
         cContent += `    0x${bits.toString(16)}, /* ${code} */\n`;
-    }
+        }
     cContent += `};\n\n`;
 
     // Count of bit-packed airport codes
