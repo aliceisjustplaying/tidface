@@ -95,7 +95,8 @@ describe('generateAirportTzList', () => {
 
     // Expect the three airport codes to be present exactly once each in the code pool section
     ['JFK', 'LHR', 'FEN'].forEach(code => {
-      const matches = content.match(new RegExp(`"${code}"`, 'g'));
+      // Codes are encoded as bit-packed entries with comments like /* JFK */
+      const matches = content.match(new RegExp(`\\/\\*\\s*${code}\\s*\\*\\/`, 'g'));
       expect(matches).not.toBeNull();
       expect(matches!.length).toBe(1);
     });
@@ -114,8 +115,10 @@ describe('generateAirportTzList', () => {
     await generateCCode(airportsList, out, 5, 5);
     const content = await fs.readFile(out, 'utf-8');
 
-    // Extract all std_offset_hours occurrences
-    const stdOffsets = Array.from(content.matchAll(/\{\s+(-?\d+\.\d+)f,/g)).map(m => Number(m[1]));
+    // Extract quarter-hour std offsets (first field in each TzInfo entry)
+    const stdOffsetQuarters = Array.from(content.matchAll(/\{\s*([+-]?\d+),/g)).map(m => Number(m[1]));
+    // Convert to hours by dividing by 4
+    const stdOffsets = stdOffsetQuarters.map(q => q / 4);
     // Expect three distinct standard offsets: -5, 0, -2 hours
     expect(new Set(stdOffsets)).toEqual(new Set([-5, 0, -2]));
   });
