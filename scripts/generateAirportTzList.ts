@@ -10,86 +10,36 @@ import { find as findTz } from 'geo-tz'; // Use geo-tz instead of timezonefinder
 // Remove node-fetch import, use global fetch
 import { parse } from 'csv-parse'; // Import csv-parse
 import { findDstTransitions, DstTransitions } from './tzCommon';
+import {
+  findTzCache,
+  memoizedFindTz,
+  findDstTransitionsCache,
+  memoizedFindDstTransitions,
+  parseTopHtml,
+  downloadRoutesCsv,
+  rankAirportsByRoutes,
+  downloadOurAirportsCsv,
+  getBucketKey,
+  AirportInfo,
+  OurAirportInfo,
+  TzBucketData,
+  RouteRecord,
+} from './generateAirportTzListHelpers';
 
-// --- MEMOIZATION CACHES ---
-const findTzCache = new Map<string, string[]>();
-const findDstTransitionsCache = new Map<string, DstTransitions | null>();
-
-// Helper for memoizing findTz (geo-tz)
-function memoizedFindTz(latitude: number, longitude: number): string[] {
-    const key = `${latitude}_${longitude}`;
-    if (findTzCache.has(key)) {
-        // console.log(`Cache hit for findTz: ${key}`);
-        return findTzCache.get(key)!;
-    }
-    // console.log(`Cache miss for findTz: ${key}`);
-    try {
-        const result = findTz(latitude, longitude);
-        findTzCache.set(key, result);
-        return result;
-    } catch (e) {
-        // Cache errors/empty results too
-        // console.warn(`geo-tz error for ${latitude},${longitude}: ${e}`);
-        findTzCache.set(key, []); // Cache empty array on error
-        return [];
-    }
-}
-
-// Helper for memoizing findDstTransitions
-function memoizedFindDstTransitions(tz: string, year: number): DstTransitions | null {
-    if (!tz) return null; // Handle null/empty tz string input
-    const key = `${tz}_${year}`;
-    if (findDstTransitionsCache.has(key)) {
-        // console.log(`Cache hit for findDstTransitions: ${key}`);
-        return findDstTransitionsCache.get(key)!;
-    }
-    // console.log(`Cache miss for findDstTransitions: ${key}`);
-    try {
-        const result = findDstTransitions(tz, year);
-        findDstTransitionsCache.set(key, result);
-        return result;
-    } catch (e) {
-         // Cache null on error
-         // console.warn(`findDstTransitions error for ${tz}, ${year}: ${e}`);
-         findDstTransitionsCache.set(key, null);
-         return null;
-    }
+// Local-only type used before helper split
+interface AirportDataEntry {
+  iata?: string;
+  name?: string;
+  city?: string;
+  country?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  tz?: string;
+  type?: string;
+  source?: string;
 }
 
 // Define interfaces for data structures
-interface AirportDataEntry {
-    iata?: string;
-    name?: string;
-    city?: string;
-    country?: string;
-    latitude?: number | string; // Types might be inconsistent
-    longitude?: number | string;
-    tz?: string;
-    type?: string;
-    source?: string;
-}
-
-interface OurAirportInfo {
-    iata: string;
-    type: string;
-    scheduled_service: string;
-}
-
-interface AirportInfo {
-    iata: string;
-    name: string;
-    city: string;
-    country: string;
-    latitude: number;
-    longitude: number;
-    tz: string;
-    correctedTz: string;
-    type?: string;
-    source?: string;
-    scheduled_service?: string;
-    route_hits: number;
-}
-
 interface TzBucketKey {
     stdOffsetSeconds: number;
     dstOffsetSeconds: number;
@@ -97,174 +47,39 @@ interface TzBucketKey {
     dstEndTimestamp: number;
 }
 
-interface TzBucketData {
-    std: number;
-    dst: number;
-    start: number;
-    end: number;
-    tzNames: Set<string>;
-    codes: string[];
-    offset?: number;
-    count?: number;
-}
-
 // Helper function to create bucket keys
-function getBucketKey(details: DstTransitions): string {
-    return `${details[0]}_${details[1]}_${details[2]}_${details[3]}`;
-}
+// function getBucketKey(details: DstTransitions): string {
+//     return `${details[0]}_${details[1]}_${details[2]}_${details[3]}`;
+// }
 
 // Placeholder functions matching Python script structure
 
-async function parseTopHtml(htmlPath: string): Promise<Array<[string, string]>> {
-    console.log(`Parsing HTML file: ${htmlPath}`);
-    const htmlContent = await fs.readFile(htmlPath, 'utf-8');
-    const $ = cheerio.load(htmlContent);
-    const results: Array<[string, string]> = [];
-    $('tr').each((_, tr) => {
-        const tds = $(tr).find('td');
-        if (tds.length < 3) return;
-        const iata = $(tds[2]).text().trim().toUpperCase();
-        if (!iata || iata.length !== 3) return; // Basic validation
-        // Improve name extraction - handle potential h2 tags etc.
-        let name = $(tds[1]).find('h2').first().text().trim();
-        if (!name) {
-            name = $(tds[1]).text().trim();
-        }
-        // Clean up common suffixes (like in Python)
-        if (name.endsWith(' International Airport')) {
-            name = name.substring(0, name.length - ' International Airport'.length);
-        } else if (name.endsWith(' Airport')) {
-            name = name.substring(0, name.length - ' Airport'.length);
-        }
-        results.push([iata, name.trim()]);
-    });
-    console.log(`Found ${results.length} airports in HTML.`);
-    return results;
-}
-
-// Define type for a route record
-type RouteRecord = [string, string]; // [source_iata, destination_iata]
-
-async function downloadRoutesCsv(): Promise<RouteRecord[]> {
-    console.log('Downloading and parsing routes data...');
-    const url = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/routes.dat";
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-        }
-        const text = await response.text();
-        console.log('Routes data downloaded, parsing...');
-
-        const records: RouteRecord[] = [];
-        const parser = parse({
-            delimiter: ',',
-            columns: false, // Data has no header row
-            skip_empty_lines: true,
-            trim: true,
-        });
-
-        parser.on('readable', function(){
-            let record;
-            while ((record = parser.read()) !== null) {
-                // Indices based on routes.dat format: 2=Source IATA, 4=Dest IATA
-                const srcIata = record[2];
-                const dstIata = record[4];
-                // Basic validation for 3-letter IATA codes
-                if (srcIata && srcIata.length === 3 && /^[A-Z]+$/.test(srcIata) &&
-                    dstIata && dstIata.length === 3 && /^[A-Z]+$/.test(dstIata)) {
-                    records.push([srcIata, dstIata]);
-                }
-            }
-        });
-
-        parser.on('error', function(err){
-            console.error('CSV Parsing Error:', err.message);
-        });
-
-        return new Promise((resolve, reject) => {
-            parser.on('end', function(){
-                console.log(`Finished parsing routes. Found ${records.length} valid routes.`);
-                resolve(records);
-            });
-            parser.write(text);
-            parser.end();
-        });
-
-    } catch (error) {
-        console.error('Error downloading or parsing routes data:', error);
-        throw error; // Re-throw error to be handled by caller
-    }
-}
-
-async function rankAirportsByRoutes(routes: RouteRecord[]): Promise<Map<string, number>> {
-    console.log('Ranking airports by routes...');
-    const counts = new Map<string, number>();
-
-    for (const [srcIata, dstIata] of routes) {
-        counts.set(srcIata, (counts.get(srcIata) || 0) + 1);
-        counts.set(dstIata, (counts.get(dstIata) || 0) + 1);
-    }
-
-    console.log(`Airport ranking complete. Found ${counts.size} unique airports in routes.`);
-    return counts; // Return map of IATA -> count
-}
-
-async function downloadOurAirportsCsv(): Promise<Map<string, OurAirportInfo>> {
-    console.log('Downloading and parsing OurAirports data...');
-    const url = "https://davidmegginson.github.io/ourairports-data/airports.csv";
-    const ourAirportsMap = new Map<string, OurAirportInfo>();
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-        }
-        const text = await response.text();
-        console.log('OurAirports data downloaded, parsing...');
-
-        const parser = parse({
-            delimiter: ',',
-            columns: true, // Use header row
-            skip_empty_lines: true,
-            trim: true,
-        });
-
-        parser.on('readable', function() {
-            let record;
-            while ((record = parser.read()) !== null) {
-                // Extract relevant columns: iata_code, type, scheduled_service
-                const iata = record.iata_code;
-                const type = record.type;
-                const scheduled = record.scheduled_service;
-                if (iata && iata.length === 3 && /^[A-Z0-9]+$/.test(iata)) {
-                    ourAirportsMap.set(iata.toUpperCase(), {
-                        iata: iata.toUpperCase(),
-                        type: type || '', // Handle potential missing values
-                        scheduled_service: scheduled || ''
-                    });
-                }
-            }
-        });
-
-        parser.on('error', function(err) {
-            console.error('OurAirports CSV Parsing Error:', err.message);
-        });
-
-        return new Promise((resolve, reject) => {
-            parser.on('end', function() {
-                console.log(`Finished parsing OurAirports. Found ${ourAirportsMap.size} airports with IATA.`);
-                resolve(ourAirportsMap);
-            });
-            parser.write(text);
-            parser.end();
-        });
-
-    } catch (error) {
-        console.error('Error downloading or parsing OurAirports data:', error);
-        console.warn('Proceeding without OurAirports classification data.');
-        return ourAirportsMap; // Return empty map on error
-    }
-}
+// async function parseTopHtml(htmlPath: string): Promise<Array<[string, string]>> {
+//     console.log(`Parsing HTML file: ${htmlPath}`);
+//     const htmlContent = await fs.readFile(htmlPath, 'utf-8');
+//     const $ = cheerio.load(htmlContent);
+//     const results: Array<[string, string]> = [];
+//     $('tr').each((_, tr) => {
+//         const tds = $(tr).find('td');
+//         if (tds.length < 3) return;
+//         const iata = $(tds[2]).text().trim().toUpperCase();
+//         if (!iata || iata.length !== 3) return; // Basic validation
+//         // Improve name extraction - handle potential h2 tags etc.
+//         let name = $(tds[1]).find('h2').first().text().trim();
+//         if (!name) {
+//             name = $(tds[1]).text().trim();
+//         }
+//         // Clean up common suffixes (like in Python)
+//         if (name.endsWith(' International Airport')) {
+//             name = name.substring(0, name.length - ' International Airport'.length);
+//         } else if (name.endsWith(' Airport')) {
+//             name = name.substring(0, name.length - ' Airport'.length);
+//         }
+//         results.push([iata, name.trim()]);
+//     });
+//     console.log(`Found ${results.length} airports in HTML.`);
+//     return results;
+// }
 
 async function generateCCode(
     airportsList: Array<[string, string]>,
