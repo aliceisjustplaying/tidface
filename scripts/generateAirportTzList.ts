@@ -454,26 +454,22 @@ async function generateCCode(
     cContent += `// Year-specific DST data for ${year}\n\n`;
     cContent += `#include <stdint.h>\n\n`;
 
-    // Airport Code Pool (3-letter IATA codes)
-    cContent += `// Total airport codes: ${codePool.length}\n`;
-    cContent += `static const char airport_code_pool[] =\n`;
-    if (codePool.length > 0) {
-        for (let i = 0; i < codePool.length; i++) {
-            if (i % 8 === 0) cContent += `    `; // Indent
-            cContent += `"${codePool[i]}"`;
-            if ((i + 1) % 8 === 0 || i === codePool.length - 1) {
-                cContent += `\n`;
-            } else {
-                cContent += ` `;
-            }
-        }
-        cContent += `;\n\n`;
-    } else {
-        cContent += `    ""; // Empty pool\n`;
-        cContent += `;
-
-`;
+    // Airport Code Pool (bit-packed 15 bits/code)
+    cContent += `// Total airport codes: ${codePool.length}  (codes listed for debug)\n`;
+    cContent += `// Codes: ${codePool.join(', ')}\n`;
+    cContent += `static const uint16_t airport_code_pool_bits[] = {\n`;
+    for (const code of codePool) {
+        // pack each letter A-Z into 5 bits
+        const b0 = code.charCodeAt(0) - 65;
+        const b1 = code.charCodeAt(1) - 65;
+        const b2 = code.charCodeAt(2) - 65;
+        const bits = (b0 << 10) | (b1 << 5) | b2;
+        cContent += `    0x${bits.toString(16)}, /* ${code} */\n`;
     }
+    cContent += `};\n\n`;
+
+    // Count of bit-packed airport codes
+    cContent += `#define AIRPORT_CODE_POOL_BITS_COUNT ${codePool.length}\n\n`;
 
     // Airport Name Pool (pointers to strings)
     cContent += `// Total airport names: ${namePool.length}\n`;
@@ -498,26 +494,29 @@ async function generateCCode(
         cContent += `    "\0"; // Empty pool\n\n`;
     }
 
-    // TzInfo struct definition
+    // Packed TzInfo struct: quarter-hours and 32-bit UTC
     cContent += `typedef struct {\n`;
-    cContent += `    float std_offset_hours;\n`;
-    cContent += `    float dst_offset_hours;\n`;
-    cContent += `    int64_t dst_start_utc;\n`;
-    cContent += `    int64_t dst_end_utc;\n`;
-    cContent += `    int name_offset; // Index into airport_code_pool & airport_name_pool\n`;
-    cContent += `    int name_count;  // Number of unique airports for this tz variant\n`;
+    cContent += `    int8_t  std_quarters;    // std offset in 0.25h units\n`;
+    cContent += `    int8_t  dst_quarters;    // dst offset in 0.25h units\n`;
+    cContent += `    int32_t dst_start_utc;   // DST start (seconds since epoch)\n`;
+    cContent += `    int32_t dst_end_utc;     // DST end (seconds since epoch)\n`;
+    cContent += `    uint16_t name_offset;    // Index into airport_name_pool\n`;
+    cContent += `    uint8_t  name_count;     // Number of codes in this bucket\n`;
     cContent += `} TzInfo;\n\n`;
 
-    // airport_tz_list array initialization
+    // airport_tz_list array: packed quarters and 32-bit DST timestamps
     cContent += `// Total timezone variants: ${sortedBuckets.length}\n`;
     cContent += `static const TzInfo airport_tz_list[] = {\n`;
     if (sortedBuckets.length > 0) {
         for (const bucket of sortedBuckets) {
-            const std_h = bucket.std / 3600.0;
-            const dst_h = bucket.dst / 3600.0;
-            // Escape any backslashes potentially in timezone names for the comment
-            const tzComment = Array.from(bucket.tzNames).slice(0,3).join(', ').replace(/\\/g, '\\');
-            cContent += `    { ${std_h.toFixed(2)}f, ${dst_h.toFixed(2)}f, ${bucket.start}LL, ${bucket.end}LL, ${bucket.offset ?? 0}, ${bucket.count ?? 0} }, // ${tzComment}...\n`;
+            // pack standard/dst offsets: seconds -> quarter-hours (900s)
+            const stdQ = Math.round(bucket.std / 900);
+            const dstQ = Math.round(bucket.dst / 900);
+            // original hours for debug
+            const std_h = (bucket.std / 3600.0).toFixed(2);
+            const dst_h = (bucket.dst / 3600.0).toFixed(2);
+            const tzComment = Array.from(bucket.tzNames).slice(0,3).join(', ');
+            cContent += `    { ${stdQ}, ${dstQ}, ${bucket.start}, ${bucket.end}, ${bucket.offset ?? 0}, ${bucket.count ?? 0} }, // ${tzComment} (${std_h}h/${dst_h}h)\n`;
         }
     } else {
          cContent += `    // Empty list\n`;

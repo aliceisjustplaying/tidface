@@ -47,6 +47,8 @@
   #define NAME_POOL           airport_name_pool
   #define TZ_LIST             airport_tz_list
   #define TZ_LIST_COUNT       AIRPORT_TZ_LIST_COUNT
+  // Bit-packed IATA code pool (15-bits per entry)
+  extern const uint16_t airport_code_pool_bits[];
 #endif
 
 #ifdef __cplusplus
@@ -109,7 +111,8 @@ static inline void _airport_pick_new(time_t current_utc_t) {
     for (int i = 0; i < (int)TZ_LIST_COUNT; ++i) {
         const TzInfo *tz = &TZ_LIST[i];
         bool is_dst = _airport_is_dst(tz, (int64_t)current_utc_t);
-        float offset_h = is_dst ? tz->dst_offset_hours : tz->std_offset_hours;
+        // reconstruct hours from quarter-hour units
+        float offset_h = (is_dst ? tz->dst_quarters : tz->std_quarters) * 0.25f;
         long local_secs = (long)utc_secs + (long)(offset_h * 3600.0f);
         local_secs %= DAY_SECONDS;
         if (local_secs < 0) local_secs += DAY_SECONDS;
@@ -134,13 +137,17 @@ static inline void _airport_pick_new(time_t current_utc_t) {
         int idx = best_candidates[(best_count == 1) ? 0 : (rand() % best_count)];
         const TzInfo *tz = &TZ_LIST[idx];
         bool is_dst = _airport_is_dst(tz, (int64_t)current_utc_t);
-        s_selected_offset_hours = is_dst ? tz->dst_offset_hours : tz->std_offset_hours;
+        // reconstruct float offset from quarter-hour units
+        s_selected_offset_hours = (is_dst ? tz->dst_quarters : tz->std_quarters) * 0.25f;
         int cnt = tz->name_count;
         int ni  = (cnt == 1) ? 0 : (rand() % cnt);
-        memcpy((void *)s_selected_code, CODE_POOL + 3 * (tz->name_offset + ni), 3);
-        s_selected_code[3] = '\0'; // Ensure null termination
-        int nameIndex = tz->name_offset + ni;
-        s_selected_name = _airport_flat_name(NAME_POOL, nameIndex);
+        // unpack 3-letter code from bit-packed 15-bit entries
+        uint16_t bits = airport_code_pool_bits[tz->name_offset + ni];
+        s_selected_code[0] = 'A' + ((bits >> 10) & 0x1F);
+        s_selected_code[1] = 'A' + ((bits >> 5) & 0x1F);
+        s_selected_code[2] = 'A' + ( bits        & 0x1F);
+        s_selected_code[3] = '\0';
+        s_selected_name = _airport_flat_name(NAME_POOL, tz->name_offset + ni);
     }
     s_last_re_eval_time = current_utc_t;
 }
