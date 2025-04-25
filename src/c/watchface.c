@@ -45,6 +45,7 @@ static void save_settings() {
 }
 
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
+  (void)context;
   APP_LOG(APP_LOG_LEVEL_INFO, "Inbox received!");
   // Read timeAlignmentMode preference
   Tuple *target_time_mode_t = dict_find(iter, MESSAGE_KEY_timeAlignmentMode);
@@ -71,6 +72,8 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
 
 // Handles updates from the TickTimerService
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  (void)tick_time;
+  (void)units_changed;
   time_t seconds;
   uint16_t milliseconds;
   time_ms(&seconds, &milliseconds);
@@ -133,6 +136,7 @@ static void main_window_load(Window *window) {
 }
 
 static void main_window_unload(Window *window) {
+  (void)window;
   // Destroy Closest Noon layers
   clock_closest_airport_noon_deinit(s_airport_noon_code_layer);
   text_layer_destroy(s_airport_noon_name_layer);
@@ -142,8 +146,12 @@ static void main_window_unload(Window *window) {
 }
 
 static void init() {
-  srand(time(NULL));
-
+  {
+    time_t seed_sec;
+    uint16_t seed_ms;
+    time_ms(&seed_sec, &seed_ms);
+    srand((unsigned int)(seed_sec * 1000 + seed_ms));
+  }
   // Load settings
   load_settings();
 
@@ -182,7 +190,8 @@ static void init() {
 }
 
 static void deinit() {
-    window_destroy(s_main_window);
+  tick_timer_service_unsubscribe();
+  window_destroy(s_main_window);
 }
 
 int main(void) {

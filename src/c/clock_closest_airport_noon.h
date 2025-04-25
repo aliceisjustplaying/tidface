@@ -3,7 +3,7 @@
 
 // A header-only implementation of a Pebble clock module that displays the
 // IATA code of a randomly-chosen airport whose local time is the *closest past
-//* but not before* 12:00:00 (noon) relative to the current UTC.  The
+// but not before* 12:00:00 (noon) relative to the current UTC.  The
 // underlying data come from the generated `airport_tz_list.c`, which is built
 // by `generate_airport_tz_list.py`.
 //
@@ -205,17 +205,14 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
 
     // Update text layers ---------------------------------------------------
     text_layer_set_text(code_layer, s_selected_code);
-
     long offset_seconds = (long)(s_selected_offset_hours * 3600.0f);
-    time_t local_epoch = current_utc_t + offset_seconds;
-    struct tm *local_tm = gmtime(&local_epoch);
-
+    // Compute local time using utc_tm and offset to avoid second gmtime()
+    long total_local_secs = (utc_tm->tm_hour * 3600L + utc_tm->tm_min * 60L + utc_tm->tm_sec + offset_seconds) % DAY_SECONDS;
+    if (total_local_secs < 0) total_local_secs += DAY_SECONDS;
+    int local_min = (int)((total_local_secs / 60) % 60);
+    int local_sec = (int)(total_local_secs % 60);
     static char s_timebuf[10];
-    if (local_tm) {
-        snprintf(s_timebuf, sizeof(s_timebuf), "%02d:%02d", local_tm->tm_min, local_tm->tm_sec);
-    } else {
-        snprintf(s_timebuf, sizeof(s_timebuf), "ERR");
-    }
+    snprintf(s_timebuf, sizeof(s_timebuf), "%02d:%02d", local_min, local_sec);
     text_layer_set_text(time_layer, s_timebuf);
 }
 
@@ -224,5 +221,3 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
 #endif
 
 #endif /* CLOCK_CLOSEST_AIRPORT_NOON_H */
-
-// Note: using airport_name_offsets[] directly for name lookup
