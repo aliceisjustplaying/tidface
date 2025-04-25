@@ -1,6 +1,16 @@
 #include <pebble.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+
+// Logging: enable by defining ENABLE_APP_LOGS to 1
+#ifndef ENABLE_APP_LOGS
+#define ENABLE_APP_LOGS 0
+#endif
+#if !ENABLE_APP_LOGS
+#undef APP_LOG
+#define APP_LOG(level, fmt, ...)
+#endif
 
 // Clock modules
 #include "clock_beat.h"
