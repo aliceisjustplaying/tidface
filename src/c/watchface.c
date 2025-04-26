@@ -26,9 +26,18 @@ typedef enum {
   MODE_5PM = 1
 } TargetTimeMode;
 
+typedef enum {
+  COLOR_LIGHT = 0,
+  COLOR_DARK  = 1
+} ColorScheme;
+
 typedef struct AppSettings {
   TargetTimeMode target_time_mode;
+  ColorScheme    color_scheme;
 } AppSettings;
+
+// Forward declare helper to apply colors across UI
+static void apply_color_scheme();
 
 static AppSettings settings;
 
@@ -46,6 +55,7 @@ static TextLayer *s_beat_layer;
 static void load_settings() {
   // Set default values
   settings.target_time_mode = MODE_NOON;
+  settings.color_scheme    = COLOR_LIGHT;
   // Read settings from persistent storage, if they exist
   persist_read_data(SETTINGS_KEY, &settings, sizeof(settings));
 }
@@ -73,8 +83,18 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Key timeAlignmentMode not found!");
   }
 
+  // Read color scheme preference
+  Tuple *color_scheme_t = dict_find(iter, MESSAGE_KEY_colorScheme);
+  if (color_scheme_t) {
+    int recv_val = (int)color_scheme_t->value->int32;
+    settings.color_scheme = (recv_val == 49) ? COLOR_DARK : COLOR_LIGHT;
+  }
+
   // Save the new settings
   save_settings();
+
+  // Apply updated colors immediately
+  apply_color_scheme();
 
   // Potentially force an update if needed (e.g., re-pick airport)
   s_last_re_eval_time = -1; // Force re-evaluation on next tick
@@ -119,6 +139,7 @@ static void main_window_load(Window *window) {
   // Create airport name line below the IATA code
   s_airport_noon_name_layer = text_layer_create(GRect(3, name_h, bounds.size.w - 5, name_h));
   text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  text_layer_set_background_color(s_airport_noon_name_layer, GColorClear); // Make background transparent
   text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
   // Create hero time line, vertically centered
@@ -143,6 +164,9 @@ static void main_window_load(Window *window) {
   s_beat_layer = clock_beat_init(GRect(0, footer_y + tid_h - 3, w, beat_h), window_layer);
   text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
   text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
+
+  // Apply color scheme to layers
+  apply_color_scheme();
 }
 
 static void main_window_unload(Window *window) {
@@ -167,8 +191,8 @@ static void init() {
 
   // Create main Window element and assign to pointer
   s_main_window = window_create();
-  // Ensure text layers with clear background show up on white
-  window_set_background_color(s_main_window, GColorWhite);
+  // Set initial background color based on saved settings
+  window_set_background_color(s_main_window, (settings.color_scheme == COLOR_DARK) ? GColorBlack : GColorWhite);
 
   // Set handlers to manage the elements inside the Window
   window_set_window_handlers(
@@ -202,6 +226,22 @@ static void init() {
 static void deinit() {
   tick_timer_service_unsubscribe();
   window_destroy(s_main_window);
+}
+
+// --- Helper: Apply Color Scheme ---
+static void apply_color_scheme() {
+  GColor bg = (settings.color_scheme == COLOR_DARK) ? GColorBlack : GColorWhite;
+  GColor fg = (settings.color_scheme == COLOR_DARK) ? GColorWhite : GColorBlack;
+
+  if (s_main_window) {
+    window_set_background_color(s_main_window, bg);
+  }
+
+  if (s_airport_noon_code_layer)  text_layer_set_text_color(s_airport_noon_code_layer, fg);
+  if (s_airport_noon_name_layer)  text_layer_set_text_color(s_airport_noon_name_layer, fg);
+  if (s_airport_noon_time_layer)  text_layer_set_text_color(s_airport_noon_time_layer, fg);
+  if (s_tid_layer)               text_layer_set_text_color(s_tid_layer, fg);
+  if (s_beat_layer)              text_layer_set_text_color(s_beat_layer, fg);
 }
 
 int main(void) {

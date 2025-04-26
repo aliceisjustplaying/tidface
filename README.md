@@ -1,4 +1,5 @@
-![screenshot](screenshot.png)
+![Light mode](screenshot_light.png)
+![Dark mode](screenshot_dark.png)
 
 # TID clock (and other watchfaces for pebble)
 
