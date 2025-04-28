@@ -10,13 +10,13 @@
 // The public interface mirrors `clock_closest_noon.h`, so you can swap calls
 // easily in `watchface.c`.
 //
-//  • clock_closest_airport_noon_code_init   – returns a TextLayer* for the IATA
+//  • clock_closest_airport_noon_code_init   - returns a TextLayer* for the IATA
 //    display (3- or 4-char string).
-//  • clock_closest_airport_noon_time_init   – returns a TextLayer* for the
+//  • clock_closest_airport_noon_time_init   - returns a TextLayer* for the
 //    hero minutes : seconds display.
-//  • clock_closest_airport_noon_update      – to be called once per second with
+//  • clock_closest_airport_noon_update      - to be called once per second with
 //    the current UTC epoch (as provided by Pebble's `time_ms`).
-//  • clock_closest_airport_noon_deinit      – cleanup helper.
+//  • clock_closest_airport_noon_deinit      - cleanup helper.
 //
 // Implementation note: The whole logic is declared `static inline` so that the
 // header can be included in just one translation unit (e.g. `watchface.c`) and

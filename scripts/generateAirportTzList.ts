@@ -585,7 +585,7 @@ export {
 };
 
 // ------------------------------------------------------------
-// CLI entry point – only run when invoked directly
+// CLI entry point - only run when invoked directly
 // ------------------------------------------------------------
 if (require.main === module) {
     main().catch(error => {

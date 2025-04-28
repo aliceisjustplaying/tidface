@@ -62,10 +62,7 @@ static char s_airport_detail_buf[64];
 static bool s_showing_details = false;
 static AppTimer *s_detail_timer = NULL;
 
-// Forward declarations for button handling
-static void select_long_click_down_handler(ClickRecognizerRef recognizer, void *context);
-static void select_long_click_up_handler(ClickRecognizerRef recognizer, void *context);
-static void click_config_provider(void *context);
+// Interaction handlers
 static void detail_timeout_handler(void *data);
 static void tap_handler(AccelAxisType axis, int32_t direction);
 
@@ -124,9 +121,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     snprintf(s_airport_detail_buf, sizeof(s_airport_detail_buf), "%s, %s", city_t->value->cstring, country_t->value->cstring);
     text_layer_set_text(s_airport_noon_name_layer, s_airport_detail_buf);
     s_showing_details = true;
-    if (s_detail_timer) {
-      app_timer_cancel(s_detail_timer);
-    }
     s_detail_timer = app_timer_register(5000, detail_timeout_handler, NULL);  // show for 5s
   }
 
@@ -150,7 +144,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Determine target seconds based on setting
   long target_seconds = (settings.target_time_mode == MODE_5PM) ? (17 * 3600L) : (12 * 3600L);
 
-  // Hero: Closest Noon (update city and time layers) – freeze during detail display/fetch
+  // Hero: Closest Noon (update city and time layers) - freeze during detail display/fetch
   if (!s_showing_details) {
     clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds, target_seconds);
   }
@@ -233,8 +227,6 @@ static void init() {
 
   // Create main Window element and assign to pointer
   s_main_window = window_create();
-  // (Buttons unused in watchface mode) – using tap instead
-  // window_set_click_config_provider(s_main_window, click_config_provider);
   // Set initial background color based on saved settings
   window_set_background_color(s_main_window, (settings.color_scheme == COLOR_DARK) ? GColorBlack : GColorWhite);
 
@@ -294,34 +286,6 @@ static void apply_color_scheme() {
   if (s_beat_layer)              text_layer_set_text_color(s_beat_layer, fg);
 }
 
-// --- Button Handling -----------------------------------------------------
-static void select_long_click_down_handler(ClickRecognizerRef recognizer, void *context) {
-  (void)recognizer; (void)context;
-  // No action on down; just log
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "SELECT long click DOWN");
-}
-
-static void select_long_click_up_handler(ClickRecognizerRef recognizer, void *context) {
-  (void)recognizer; (void)context;
-  // Build and send request to phone
-  DictionaryIterator *out_iter;
-  AppMessageResult res = app_message_outbox_begin(&out_iter);
-  if (res == APP_MSG_OK && out_iter) {
-    dict_write_uint8(out_iter, KEY_REQUEST_TYPE, REQUEST_AIRPORT_INFO);
-    dict_write_cstring(out_iter, KEY_AIRPORT_CODE, s_selected_code);
-    app_message_outbox_send();
-    APP_LOG(APP_LOG_LEVEL_INFO, "Airport info request sent for %s", s_selected_code);
-    text_layer_set_text(s_airport_noon_name_layer, "Fetching...");
-  } else {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to start outbox: %d", res);
-  }
-}
-
-static void click_config_provider(void *context) {
-  // Use SELECT long click: 600ms threshold, separate up handler.
-  window_long_click_subscribe(BUTTON_ID_SELECT, 600, select_long_click_down_handler, select_long_click_up_handler);
-}
-
 static void detail_timeout_handler(void *data) {
   (void)data;
   s_showing_details = false;
@@ -331,7 +295,7 @@ static void detail_timeout_handler(void *data) {
 // --- Tap Handling --------------------------------------------------------
 static void tap_handler(AccelAxisType axis, int32_t direction) {
   (void)axis; (void)direction;
-  APP_LOG(APP_LOG_LEVEL_INFO, "Tap detected – requesting airport info");
+  APP_LOG(APP_LOG_LEVEL_INFO, "Tap detected - requesting airport info");
   DictionaryIterator *out_iter;
   AppMessageResult res = app_message_outbox_begin(&out_iter);
   if (res == APP_MSG_OK && out_iter) {

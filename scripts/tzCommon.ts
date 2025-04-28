@@ -173,7 +173,7 @@ export function findDstTransitions(zoneName: string, year: number): DstTransitio
     cursor = nextCursor;
   }
 
-  // Final fallbacks – replicate slow loop behaviour
+  // Final fallbacks - replicate slow loop behaviour
   if (stdOffsetSec === null && dstOffsetSec !== null) {
     stdOffsetSec = dstOffsetSec;
   }
