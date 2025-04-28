@@ -2,3 +2,4 @@ build/
 .lock*
 .clangd
 node_modules
+package-lock.json
