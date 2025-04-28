@@ -21,6 +21,14 @@
 // --- Clock Modules & Settings ---
 #define SETTINGS_KEY 1
 
+// --- AppMessage Keys for Airport Info ---
+#define KEY_REQUEST_TYPE  200
+#define KEY_AIRPORT_CODE  201
+#define KEY_CITY          202
+#define KEY_COUNTRY       203
+
+#define REQUEST_AIRPORT_INFO 1
+
 typedef enum {
   MODE_NOON = 0,
   MODE_5PM = 1
@@ -49,6 +57,22 @@ static TextLayer *s_airport_noon_time_layer;
 static TextLayer *s_tid_layer;
 static TextLayer *s_beat_layer;
 
+// Detail display
+static char s_airport_detail_buf[64];
+static bool s_showing_details = false;
+static AppTimer *s_detail_timer = NULL;
+
+// Forward declarations for button handling
+static void select_long_click_down_handler(ClickRecognizerRef recognizer, void *context);
+static void select_long_click_up_handler(ClickRecognizerRef recognizer, void *context);
+static void click_config_provider(void *context);
+static void detail_timeout_handler(void *data);
+static void tap_handler(AccelAxisType axis, int32_t direction);
+
+// AppMessage diagnostics forward decls
+static void inbox_dropped_handler(AppMessageResult reason, void *context);
+static void out_failed_handler(DictionaryIterator *iter, AppMessageResult reason, void *context);
+
 // --- Pebble Window Management ---
 
 // --- Settings Load/Save/Receive ---
@@ -67,6 +91,7 @@ static void save_settings() {
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   (void)context;
   APP_LOG(APP_LOG_LEVEL_INFO, "Inbox received!");
+  bool settings_changed = false;
   // Read timeAlignmentMode preference
   Tuple *target_time_mode_t = dict_find(iter, MESSAGE_KEY_timeAlignmentMode);
   if (target_time_mode_t) {
@@ -79,6 +104,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
       settings.target_time_mode = MODE_NOON;
     }
     APP_LOG(APP_LOG_LEVEL_INFO, "Setting mode to: %d", settings.target_time_mode);
+    settings_changed = true;
   } else {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Key timeAlignmentMode not found!");
   }
@@ -88,16 +114,28 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if (color_scheme_t) {
     int recv_val = (int)color_scheme_t->value->int32;
     settings.color_scheme = (recv_val == 49) ? COLOR_DARK : COLOR_LIGHT;
+    settings_changed = true;
   }
 
-  // Save the new settings
-  save_settings();
+  // Handle airport detail response
+  Tuple *city_t = dict_find(iter, KEY_CITY);
+  Tuple *country_t = dict_find(iter, KEY_COUNTRY);
+  if (city_t && country_t) {
+    snprintf(s_airport_detail_buf, sizeof(s_airport_detail_buf), "%s, %s", city_t->value->cstring, country_t->value->cstring);
+    text_layer_set_text(s_airport_noon_name_layer, s_airport_detail_buf);
+    s_showing_details = true;
+    if (s_detail_timer) {
+      app_timer_cancel(s_detail_timer);
+    }
+    s_detail_timer = app_timer_register(5000, detail_timeout_handler, NULL);  // show for 5s
+  }
 
-  // Apply updated colors immediately
-  apply_color_scheme();
-
-  // Potentially force an update if needed (e.g., re-pick airport)
-  s_last_re_eval_time = -1; // Force re-evaluation on next tick
+  // Save and apply if any settings changed
+  if (settings_changed) {
+    save_settings();
+    apply_color_scheme();
+    s_last_re_eval_time = -1; // Force re-evaluation on next tick
+  }
 }
 
 // Handles updates from the TickTimerService
@@ -112,11 +150,15 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Determine target seconds based on setting
   long target_seconds = (settings.target_time_mode == MODE_5PM) ? (17 * 3600L) : (12 * 3600L);
 
-  // Hero: Closest Noon (update city and time layers)
-  clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds, target_seconds);
+  // Hero: Closest Noon (update city and time layers) – freeze during detail display/fetch
+  if (!s_showing_details) {
+    clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds, target_seconds);
+  }
 
-  // Update airport name below the code
-  text_layer_set_text(s_airport_noon_name_layer, s_selected_name);
+  // Update airport name below the code (skip if showing temporary details)
+  if (!s_showing_details) {
+    text_layer_set_text(s_airport_noon_name_layer, s_selected_name);
+  }
   // Footer: TID (larger) and Beat (smaller)
   clock_tid_update(s_tid_layer, seconds, milliseconds);
   clock_beat_update(s_beat_layer, seconds);
@@ -191,6 +233,8 @@ static void init() {
 
   // Create main Window element and assign to pointer
   s_main_window = window_create();
+  // (Buttons unused in watchface mode) – using tap instead
+  // window_set_click_config_provider(s_main_window, click_config_provider);
   // Set initial background color based on saved settings
   window_set_background_color(s_main_window, (settings.color_scheme == COLOR_DARK) ? GColorBlack : GColorWhite);
 
@@ -209,13 +253,18 @@ static void init() {
   // Perform initial update after loading settings
   tick_handler(NULL, SECOND_UNIT); // Pass NULL tick_time as it's not used by our handler logic
 
-  // Register with TickTimerService to update every second
+  // Register with services
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  accel_tap_service_subscribe(tap_handler);
 
   // Register AppMessage handlers
   app_message_register_inbox_received(inbox_received_handler);
-  // Open AppMessage with default inbox size from Clay docs
-  AppMessageResult result = app_message_open(128, 0); // 128 inbox, 0 outbox (adjust if needed)
+  app_message_register_inbox_dropped(inbox_dropped_handler);
+  app_message_register_outbox_failed(out_failed_handler);
+  // Open AppMessage with larger inbox/outbox sizes (watch needs outbox >0 to send)
+  const uint32_t INBOX_SIZE = 256;
+  const uint32_t OUTBOX_SIZE = 256;
+  AppMessageResult result = app_message_open(INBOX_SIZE, OUTBOX_SIZE);
   if (result == APP_MSG_OK) {
       APP_LOG(APP_LOG_LEVEL_INFO, "AppMessage opened successfully!");
   } else {
@@ -225,6 +274,7 @@ static void init() {
 
 static void deinit() {
   tick_timer_service_unsubscribe();
+  accel_tap_service_unsubscribe();
   window_destroy(s_main_window);
 }
 
@@ -242,6 +292,76 @@ static void apply_color_scheme() {
   if (s_airport_noon_time_layer)  text_layer_set_text_color(s_airport_noon_time_layer, fg);
   if (s_tid_layer)               text_layer_set_text_color(s_tid_layer, fg);
   if (s_beat_layer)              text_layer_set_text_color(s_beat_layer, fg);
+}
+
+// --- Button Handling -----------------------------------------------------
+static void select_long_click_down_handler(ClickRecognizerRef recognizer, void *context) {
+  (void)recognizer; (void)context;
+  // No action on down; just log
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "SELECT long click DOWN");
+}
+
+static void select_long_click_up_handler(ClickRecognizerRef recognizer, void *context) {
+  (void)recognizer; (void)context;
+  // Build and send request to phone
+  DictionaryIterator *out_iter;
+  AppMessageResult res = app_message_outbox_begin(&out_iter);
+  if (res == APP_MSG_OK && out_iter) {
+    dict_write_uint8(out_iter, KEY_REQUEST_TYPE, REQUEST_AIRPORT_INFO);
+    dict_write_cstring(out_iter, KEY_AIRPORT_CODE, s_selected_code);
+    app_message_outbox_send();
+    APP_LOG(APP_LOG_LEVEL_INFO, "Airport info request sent for %s", s_selected_code);
+    text_layer_set_text(s_airport_noon_name_layer, "Fetching...");
+  } else {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to start outbox: %d", res);
+  }
+}
+
+static void click_config_provider(void *context) {
+  // Use SELECT long click: 600ms threshold, separate up handler.
+  window_long_click_subscribe(BUTTON_ID_SELECT, 600, select_long_click_down_handler, select_long_click_up_handler);
+}
+
+static void detail_timeout_handler(void *data) {
+  (void)data;
+  s_showing_details = false;
+  text_layer_set_text(s_airport_noon_name_layer, s_selected_name);
+}
+
+// --- Tap Handling --------------------------------------------------------
+static void tap_handler(AccelAxisType axis, int32_t direction) {
+  (void)axis; (void)direction;
+  APP_LOG(APP_LOG_LEVEL_INFO, "Tap detected – requesting airport info");
+  DictionaryIterator *out_iter;
+  AppMessageResult res = app_message_outbox_begin(&out_iter);
+  if (res == APP_MSG_OK && out_iter) {
+    dict_write_uint8(out_iter, KEY_REQUEST_TYPE, REQUEST_AIRPORT_INFO);
+    dict_write_cstring(out_iter, KEY_AIRPORT_CODE, s_selected_code);
+    app_message_outbox_send();
+    text_layer_set_text(s_airport_noon_name_layer, "Fetching...");
+    s_showing_details = true;  // Freeze display until info arrives
+  } else {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Tap: outbox begin failed: %d", res);
+  }
+}
+
+// --- AppMessage diagnostic handlers ------------------------------------
+static void inbox_dropped_handler(AppMessageResult reason, void *context) {
+  (void)context;
+#if ENABLE_APP_LOGS
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Inbox dropped: %d", reason);
+#else
+  (void)reason;
+#endif
+}
+
+static void out_failed_handler(DictionaryIterator *iter, AppMessageResult reason, void *context) {
+  (void)iter; (void)context;
+#if ENABLE_APP_LOGS
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed: %d", reason);
+#else
+  (void)reason;
+#endif
 }
 
 int main(void) {
