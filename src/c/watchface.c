@@ -144,10 +144,13 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Determine target seconds based on setting
   long target_seconds = (settings.target_time_mode == MODE_5PM) ? (17 * 3600L) : (12 * 3600L);
 
-  // Hero: Closest Noon (update city and time layers) - freeze during detail display/fetch
-  if (!s_showing_details) {
-    clock_closest_airport_noon_update(s_airport_noon_code_layer, s_airport_noon_time_layer, seconds, target_seconds);
-  }
+  // Hero: Closest Noon (update city and time layers)
+  // Re-evaluation (picking a new airport) is skipped if s_showing_details is true.
+  clock_closest_airport_noon_update(s_airport_noon_code_layer,
+                                      s_airport_noon_time_layer,
+                                      seconds,
+                                      target_seconds,
+                                      !s_showing_details); // allow_reeval
 
   // Update airport name below the code (skip if showing temporary details)
   if (!s_showing_details) {

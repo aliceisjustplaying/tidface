@@ -75,7 +75,8 @@ static inline void       clock_closest_airport_noon_deinit(TextLayer *layer);
 static inline void       clock_closest_airport_noon_update(TextLayer *code_layer,
                                                            TextLayer *time_layer,
                                                            time_t     current_utc_t,
-                                                           long       target_seconds_of_day);
+                                                           long       target_seconds_of_day,
+                                                           bool       allow_reeval);
 // -------------------------------------------------------------------------
 
 // Internal constants / storage --------------------------------------------
@@ -180,7 +181,8 @@ static inline void clock_closest_airport_noon_deinit(TextLayer *layer) {
 static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
                                                      TextLayer *time_layer,
                                                      time_t     current_utc_t,
-                                                     long       target_seconds_of_day) {
+                                                     long       target_seconds_of_day,
+                                                     bool       allow_reeval) {
     if (!code_layer || !time_layer) return;
 
     // Skip redundant updates in the same second
@@ -199,7 +201,7 @@ static inline void clock_closest_airport_noon_update(TextLayer *code_layer,
         needs_eval = true;
     }
 
-    if (needs_eval) {
+    if (needs_eval && allow_reeval) {
         _airport_pick_new(current_utc_t, target_seconds_of_day);
     }
 
