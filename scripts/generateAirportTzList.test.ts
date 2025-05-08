@@ -101,7 +101,7 @@ describe('generateAirportTzList', () => {
       expect(matches!.length).toBe(1);
     });
 
-    // Ensure the Noronha timezone correction took place – should show up in bucket comment
+    // Ensure the Noronha timezone correction took place - should show up in bucket comment
     expect(content).toContain('America/Noronha');
 
     // Validate the macro count equals 3 (unique codes)

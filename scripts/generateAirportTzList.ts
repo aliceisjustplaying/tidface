@@ -1,15 +1,9 @@
-// TODO: Convert generate_airport_tz_list.py to TypeScript 
-
 import { program } from 'commander';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import * as cheerio from 'cheerio';
 // Use require for airport-data as it lacks types
 const airports = require('airport-data');
-import { find as findTz } from 'geo-tz'; // Use geo-tz instead of timezonefinder
-// Remove node-fetch import, use global fetch
-import { parse } from 'csv-parse'; // Import csv-parse
-import { findDstTransitions, DstTransitions } from './tzCommon';
+import { type DstTransitions } from './tzCommon'; // Only the type DstTransitions is used directly
 import {
   findTzCache,
   memoizedFindTz,
@@ -26,60 +20,7 @@ import {
   RouteRecord,
 } from './generateAirportTzListHelpers';
 
-// Local-only type used before helper split
-interface AirportDataEntry {
-  iata?: string;
-  name?: string;
-  city?: string;
-  country?: string;
-  latitude?: number | string;
-  longitude?: number | string;
-  tz?: string;
-  type?: string;
-  source?: string;
-}
-
-// Define interfaces for data structures
-interface TzBucketKey {
-    stdOffsetSeconds: number;
-    dstOffsetSeconds: number;
-    dstStartTimestamp: number;
-    dstEndTimestamp: number;
-}
-
-// Helper function to create bucket keys
-// function getBucketKey(details: DstTransitions): string {
-//     return `${details[0]}_${details[1]}_${details[2]}_${details[3]}`;
-// }
-
 // Placeholder functions matching Python script structure
-
-// async function parseTopHtml(htmlPath: string): Promise<Array<[string, string]>> {
-//     console.log(`Parsing HTML file: ${htmlPath}`);
-//     const htmlContent = await fs.readFile(htmlPath, 'utf-8');
-//     const $ = cheerio.load(htmlContent);
-//     const results: Array<[string, string]> = [];
-//     $('tr').each((_, tr) => {
-//         const tds = $(tr).find('td');
-//         if (tds.length < 3) return;
-//         const iata = $(tds[2]).text().trim().toUpperCase();
-//         if (!iata || iata.length !== 3) return; // Basic validation
-//         // Improve name extraction - handle potential h2 tags etc.
-//         let name = $(tds[1]).find('h2').first().text().trim();
-//         if (!name) {
-//             name = $(tds[1]).text().trim();
-//         }
-//         // Clean up common suffixes (like in Python)
-//         if (name.endsWith(' International Airport')) {
-//             name = name.substring(0, name.length - ' International Airport'.length);
-//         } else if (name.endsWith(' Airport')) {
-//             name = name.substring(0, name.length - ' Airport'.length);
-//         }
-//         results.push([iata, name.trim()]);
-//     });
-//     console.log(`Found ${results.length} airports in HTML.`);
-//     return results;
-// }
 
 async function generateCCode(
     airportsList: Array<[string, string]>,
@@ -93,7 +34,7 @@ async function generateCCode(
     const year = new Date().getUTCFullYear();
 
     // Load airport data using require
-    const airportDataArray: AirportDataEntry[] = airports as any[];
+    const airportDataArray = airports as any[];
     const initialAirportDb = new Map<string, AirportInfo>();
 
     for (const airport of airportDataArray) {
@@ -276,20 +217,21 @@ async function generateCCode(
 
         // Tier 1: Large, scheduled
         const large = candidates.filter(a => a.type === 'large_airport' && scheduledYes(a));
-        result.push(...large.slice(0, maxBucket > 0 ? maxBucket : 3).map(a => a.iata));
+        result.push(...large.slice(0, maxBucket > 0 ? maxBucket : 10).map(a => a.iata));
 
         // Tier 2: Medium, scheduled
-        let remain = (maxBucket > 0 ? maxBucket : 3) - result.length;
+        let remain = (maxBucket > 0 ? maxBucket : 5) - result.length;
         if (remain > 0) {
             const medium = candidates.filter(a => a.type === 'medium_airport' && scheduledYes(a) && !result.includes(a.iata));
-            result.push(...medium.slice(0, Math.min(remain, 2)).map(a => a.iata));
+            result.push(...medium.slice(0, Math.min(remain, 5)).map(a => a.iata));
         }
 
         // Tier 3: Small, scheduled
         remain = (maxBucket > 0 ? maxBucket : 3) - result.length;
         if (remain > 0) {
             const small = candidates.filter(a => a.type === 'small_airport' && scheduledYes(a) && !result.includes(a.iata));
-            result.push(...small.slice(0, 1).map(a => a.iata));
+            // console.log(`SMALL hit with ${small.length} candidates: ${small.map(a => a.iata).join(', ')}`);
+            result.push(...small.slice(0, 3).map(a => a.iata));
         }
 
         // Tier 4: Ensure at least one if possible
@@ -297,7 +239,8 @@ async function generateCCode(
             result.push(candidates[0].iata); // Add the top-ranked overall
         }
 
-        // Enforce max bucket size strictly if needed (though applied later too)
+        // Enforce max bucket size strictly if needed 
+        // (though applied later too)
         return maxBucket > 0 ? result.slice(0, maxBucket) : result;
     };
 
@@ -456,7 +399,6 @@ async function generateCCode(
 
     // Airport Code Pool (bit-packed 15 bits/code)
     cContent += `// Total airport codes: ${codePool.length}  (codes listed for debug)\n`;
-    cContent += `// Codes: ${codePool.join(', ')}\n`;
     cContent += `static const uint16_t airport_code_pool_bits[] = {\n`;
     for (const code of codePool) {
         // pack each letter A-Z into 5 bits
@@ -585,7 +527,7 @@ export {
 };
 
 // ------------------------------------------------------------
-// CLI entry point – only run when invoked directly
+// CLI entry point - only run when invoked directly
 // ------------------------------------------------------------
 if (require.main === module) {
     main().catch(error => {

@@ -4,3 +4,5 @@ globs:
 alwaysApply: true
 ---
 Always ignore all errors related to the file "resource_ids.auto.h"
+
+Currently, src/pkjs/config.js sends string values ("0", "1") for settings, and watchface.c converts these from their ASCII values. This is a neccessary workaround

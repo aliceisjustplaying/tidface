@@ -16,7 +16,6 @@
 #include "clock_beat.h"
 #include "clock_closest_airport_noon.h"
 #include "clock_tid.h"
-// #include "clock_decimal.h"
 
 // --- Clock Modules & Settings ---
 #define SETTINGS_KEY 1
@@ -48,6 +47,21 @@ static TextLayer *s_airport_noon_name_layer;
 static TextLayer *s_airport_noon_time_layer;
 static TextLayer *s_tid_layer;
 static TextLayer *s_beat_layer;
+
+// --- Layout Constants ---
+// These can be tweaked for different visual arrangements.
+static const int LAYER_AIRPORT_CODE_HEIGHT = 28;
+static const int LAYER_AIRPORT_NAME_HEIGHT = 28;
+static const int LAYER_AIRPORT_TIME_HEIGHT = 42; // Approximate height for FONT_KEY_LECO_42_NUMBERS
+static const int FOOTER_AREA_HEIGHT = 48;
+static const int FOOTER_TID_HEIGHT = 28;
+
+// Padding and Adjustments
+static const int AIRPORT_NAME_X_PADDING = 3;
+static const int AIRPORT_NAME_WIDTH_ADJUST = 5; // Total reduction (e.g., 2*padding + 1)
+static const int AIRPORT_TIME_Y_ADJUST = -7; // Fine-tuning vertical position
+static const int FOOTER_TID_Y_ADJUST = -1;
+static const int FOOTER_BEAT_Y_ADJUST = -3;
 
 // --- Pebble Window Management ---
 
@@ -96,8 +110,8 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   // Apply updated colors immediately
   apply_color_scheme();
 
-  // Potentially force an update if needed (e.g., re-pick airport)
-  s_last_re_eval_time = -1; // Force re-evaluation on next tick
+  // Potentially force an update if needed
+  s_last_re_eval_time = -1; // Force re-evaluation
 }
 
 // Handles updates from the TickTimerService
@@ -125,43 +139,47 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
-  // Hero area for Closest Noon: split into city + large time
-  int footer_h = 48;
-  int hero_h = bounds.size.h - footer_h;
-  const int city_h = 28;
-  const int name_h = 28;  // height for airport name (increased to fit descenders)
-  const int usable_h = hero_h - city_h - name_h;
-  const int time_font_h = 42;
-  // Create city name line
+
+  // Calculated heights based on constants
+  int hero_h = bounds.size.h - FOOTER_AREA_HEIGHT;
+  const int usable_h = hero_h - LAYER_AIRPORT_CODE_HEIGHT - LAYER_AIRPORT_NAME_HEIGHT;
+
+  // Create city name line (IATA Code)
   s_airport_noon_code_layer = clock_closest_airport_noon_code_init(
-      GRect(0, 0, bounds.size.w, city_h), window_layer);
+      GRect(0, 0, bounds.size.w, LAYER_AIRPORT_CODE_HEIGHT), window_layer);
   text_layer_set_text_alignment(s_airport_noon_code_layer, GTextAlignmentCenter);
+
   // Create airport name line below the IATA code
-  s_airport_noon_name_layer = text_layer_create(GRect(3, name_h, bounds.size.w - 5, name_h));
-  text_layer_set_font(s_airport_noon_name_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
-  text_layer_set_background_color(s_airport_noon_name_layer, GColorClear); // Make background transparent
-  text_layer_set_text_alignment(s_airport_noon_name_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(s_airport_noon_name_layer));
-  // Create hero time line, vertically centered
-  int time_y = city_h + name_h + (usable_h - time_font_h) / 2 - 7;
+  s_airport_noon_name_layer = text_layer_util_create(GRect(
+    AIRPORT_NAME_X_PADDING,
+    LAYER_AIRPORT_CODE_HEIGHT, // Positioned below the code layer
+    bounds.size.w - AIRPORT_NAME_WIDTH_ADJUST,
+    LAYER_AIRPORT_NAME_HEIGHT),
+    window_layer,
+    "", // Initial text, will be updated by tick_handler
+    FONT_KEY_GOTHIC_24);
+  // text_layer_set_text_alignment is GTextAlignmentCenter by default in text_layer_util_create
+  // text_layer_set_background_color is GColorClear by default in text_layer_util_create
+  // layer_add_child is handled by text_layer_util_create
+
+  // Create hero time line, vertically centered in its usable area
+  int time_y = LAYER_AIRPORT_CODE_HEIGHT + LAYER_AIRPORT_NAME_HEIGHT + (usable_h - LAYER_AIRPORT_TIME_HEIGHT) / 2 + AIRPORT_TIME_Y_ADJUST;
   s_airport_noon_time_layer = clock_closest_airport_noon_time_init(
-      GRect(0, time_y, bounds.size.w, time_font_h), window_layer);
+      GRect(0, time_y, bounds.size.w, LAYER_AIRPORT_TIME_HEIGHT), window_layer);
 
   // Setup footer area
   int w = bounds.size.w;
   int h = bounds.size.h;
-  int footer_y = h - footer_h;
-  // Two line heights to fit fonts without clipping
-  int tid_h = 28;   // tall enough for 18px font + padding
-  int beat_h = footer_h - tid_h;
+  int footer_y = h - FOOTER_AREA_HEIGHT;
+  int beat_h = FOOTER_AREA_HEIGHT - FOOTER_TID_HEIGHT; // Calculated
 
   // Footer line 1: TID (bigger, center aligned)
-  s_tid_layer = clock_tid_init(GRect(0, footer_y - 1, w, tid_h), window_layer);
+  s_tid_layer = clock_tid_init(GRect(0, footer_y + FOOTER_TID_Y_ADJUST, w, FOOTER_TID_HEIGHT), window_layer);
   text_layer_set_font(s_tid_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   text_layer_set_text_alignment(s_tid_layer, GTextAlignmentCenter);
 
   // Footer line 2: Beat (smaller, center aligned)
-  s_beat_layer = clock_beat_init(GRect(0, footer_y + tid_h - 3, w, beat_h), window_layer);
+  s_beat_layer = clock_beat_init(GRect(0, footer_y + FOOTER_TID_HEIGHT + FOOTER_BEAT_Y_ADJUST, w, beat_h), window_layer);
   text_layer_set_font(s_beat_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
   text_layer_set_text_alignment(s_beat_layer, GTextAlignmentCenter);
 

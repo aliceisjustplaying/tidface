@@ -4,29 +4,27 @@
   "private": true,
   "description": "Scripts for generating C code for tidface",
   "scripts": {
-    "generate:tz": "ts-node generateTzList.ts",
     "generate:airport": "ts-node generateAirportTzList.ts",
     "test": "jest"
   },
   "dependencies": {
     "@types/commander": "^2.12.5",
-    "@vvo/tzdb": "^6.161.0",
     "airport-data": "^1.0.1",
-    "cheerio": "^1",
+    "cheerio": "^1.0.0",
     "commander": "^13.1.0",
-    "csv-parse": "^5",
-    "geo-tz": "^8",
-    "luxon": "^3",
-    "timezonecomplete": "^5.13.1",
+    "csv-parse": "^5.6.0",
+    "geo-tz": "^8.1.4",
+    "luxon": "^3.6.1",
     "tzdata": "^1.0.44"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "ts-node": "^10",
-    "@types/node": "^22",
-    "@types/luxon": "^3",
-    "jest": "^29",
-    "ts-jest": "^29",
-    "@types/jest": "^29"
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.15.14",
+    "@types/luxon": "^3.6.2",
+    "@types/cheerio": "^1.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
+    "@types/jest": "^29.5.14"
   }
 }

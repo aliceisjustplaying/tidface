@@ -5,7 +5,7 @@
 // IATA code of a randomly-chosen airport whose local time is the *closest past
 // but not before* 12:00:00 (noon) relative to the current UTC.  The
 // underlying data come from the generated `airport_tz_list.c`, which is built
-// by `generate_airport_tz_list.py`.
+// by `generateAirportTzList.ts`.
 //
 // The public interface mirrors `clock_closest_noon.h`, so you can swap calls
 // easily in `watchface.c`.
@@ -33,23 +33,13 @@
 #include "text_layer_util.h"
 
 // Bring in the generated data table; make sure the build has already executed
-// generate_airport_tz_list.py.  During early development you may still include
-// `tz_list.c` as a fallback; define USE_FALLBACK_TZ_LIST to do so.
-#ifdef USE_FALLBACK_TZ_LIST
-  #include "tz_list.c"
-  #define CODE_POOL           tz_name_pool
-  #define NAME_POOL           tz_name_pool
-  #define TZ_LIST             tz_list
-  #define TZ_LIST_COUNT       TZ_LIST_COUNT
-#else
-  #include "airport_tz_list.c"
-  #define CODE_POOL           airport_code_pool
-  #define NAME_POOL           airport_name_pool
-  #define TZ_LIST             airport_tz_list
-  #define TZ_LIST_COUNT       AIRPORT_TZ_LIST_COUNT
-  // Bit-packed IATA code pool (15-bits per entry)
-  extern const uint16_t airport_code_pool_bits[];
-#endif
+// generate_airport_tz_list.py.
+#include "airport_tz_list.c"
+#define NAME_POOL           airport_name_pool
+#define TZ_LIST             airport_tz_list
+#define TZ_LIST_COUNT       AIRPORT_TZ_LIST_COUNT
+// Bit-packed IATA code pool (15-bits per entry)
+extern const uint16_t airport_code_pool_bits[];
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,7 +71,6 @@ static inline void       clock_closest_airport_noon_update(TextLayer *code_layer
 // Internal constants / storage --------------------------------------------
 #define DAY_SECONDS   (24 * 3600L)
 
-// static char  s_airport_noon_buffer[40];    // code + MM:SS
 static time_t s_last_update_time        = -1;
 static time_t s_last_re_eval_time       = -1;
 static char s_selected_code[4]          = "---";  // IATA placeholder

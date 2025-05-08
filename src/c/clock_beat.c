@@ -9,7 +9,7 @@
 #define DAY_LENGTH 86400
 
 // --- Static variables specific to Beat Clock ---
-static char s_beat_buffer[7];   // Buffer for Beat time string "@XXX.X\0"
+static char s_beat_buffer[7];   // Buffer for Beat time string "@XXX.X"
 static int last_beat_time = -1; // Cache the last displayed beat time (multiplied by 10)
 
 // --- Static helper function ---

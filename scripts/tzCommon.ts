@@ -27,7 +27,7 @@ interface TzDetails {
 /**
  * Return (offset_seconds, isDST) or undefined if the timezone is invalid or offset is null.
  */
-export function getTzDetails(zoneName: string, dt: DateTime): TzDetails | undefined {
+function getTzDetails(zoneName: string, dt: DateTime): TzDetails | undefined {
   if (!IANAZone.isValidZone(zoneName)) {
     return undefined;
   }
@@ -173,7 +173,7 @@ export function findDstTransitions(zoneName: string, year: number): DstTransitio
     cursor = nextCursor;
   }
 
-  // Final fallbacks – replicate slow loop behaviour
+  // Final fallbacks - replicate slow loop behaviour
   if (stdOffsetSec === null && dstOffsetSec !== null) {
     stdOffsetSec = dstOffsetSec;
   }

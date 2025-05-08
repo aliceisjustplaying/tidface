@@ -8,8 +8,20 @@ static const char S32_CHAR[] = "234567abcdefghijklmnopqrstuvwxyz";
 static uint64_t last_timestamp;
 static char s_tid_buffer[14];
 
+// Helper to encode a value into a fixed-width base-32 string, right-to-left, padded with S32_CHAR[0]
+static void encode_to_base32_fixed_width(char *out_buf, size_t width, uint64_t val) {
+    for (size_t i = 0; i < width; ++i) {
+        out_buf[i] = S32_CHAR[0]; // Pre-fill with padding character
+    }
+    size_t current_pos = width;
+    while (val && current_pos) {
+        out_buf[--current_pos] = S32_CHAR[val & 31];
+        val >>= 5;
+    }
+}
+
 // Generate monotonic TID string into tid_buffer
-void clock_tid_get_string(char *tid_buffer, size_t tid_buffer_len, time_t seconds, uint16_t milliseconds) {
+static void clock_tid_get_string(char *tid_buffer, size_t tid_buffer_len, time_t seconds, uint16_t milliseconds) {
     if (tid_buffer_len < sizeof(s_tid_buffer)) return;
 
     uint64_t current_micros = (uint64_t)seconds * 1000000 + (uint64_t)milliseconds * 1000;
@@ -18,28 +30,12 @@ void clock_tid_get_string(char *tid_buffer, size_t tid_buffer_len, time_t second
     }
     last_timestamp = current_micros;
 
-    // Encode 11-char base-32 timestamp (pad with '2')
-    size_t pos = 11;
-    for (size_t i = 0; i < pos; ++i) {
-        tid_buffer[i] = S32_CHAR[0];
-    }
-    uint64_t v = current_micros;
-    while (v && pos) {
-        tid_buffer[--pos] = S32_CHAR[v & 31];
-        v >>= 5;
-    }
+    // Encode 11-char base-32 timestamp
+    encode_to_base32_fixed_width(tid_buffer, 11, current_micros);
 
     // Encode 2-char random clock ID (0-1023)
     uint16_t cid = (uint16_t)(rand() % 1024);
-    pos = 2;
-    for (size_t i = 0; i < pos; ++i) {
-        tid_buffer[11 + i] = S32_CHAR[0];
-    }
-    uint16_t v2 = cid;
-    while (v2 && pos) {
-        tid_buffer[11 + --pos] = S32_CHAR[v2 & 31];
-        v2 >>= 5;
-    }
+    encode_to_base32_fixed_width(tid_buffer + 11, 2, cid);
 
     tid_buffer[13] = '\0';
 }
